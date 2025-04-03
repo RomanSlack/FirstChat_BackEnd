@@ -204,6 +204,45 @@ INDEX_HTML = """
         margin-top: 5px;
         font-size: 14px;
       }
+      .slider-container {
+        margin-top: 15px;
+      }
+      .slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 8px;
+        background: #d3d3d3;
+        outline: none;
+        opacity: 0.7;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+        border-radius: 5px;
+      }
+      .slider:hover {
+        opacity: 1;
+      }
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #4a6ee0;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+      .slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #4a6ee0;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+      .slider-value {
+        text-align: center;
+        font-weight: 500;
+        margin-top: 8px;
+        color: #4a6ee0;
+      }
       @media (max-width: 768px) {
         .form-row {
           grid-template-columns: 1fr;
@@ -287,12 +326,27 @@ Hey, I’m a 25-year-old architect with a passion for design, travel, and street
               <div class="json-preview" id="json-preview"></div>
           </div>
           
+          <div class="form-group">
+              <label for="sentence_count">Message Length (sentences):</label>
+              <div class="slider-container">
+                  <input type="range" min="1" max="5" value="2" class="slider" id="sentence_count" name="sentence_count">
+                  <div class="slider-value" id="sentence_value">2 sentences</div>
+              </div>
+          </div>
+          
           <button type="submit" class="btn">Generate Message</button>
       </form>
     </div>
     
     <script>
       document.addEventListener('DOMContentLoaded', function() {
+        // Sentence slider functionality
+        const sentenceSlider = document.getElementById('sentence_count');
+        const sentenceValue = document.getElementById('sentence_value');
+        
+        sentenceSlider.oninput = function() {
+          sentenceValue.textContent = this.value + (this.value === '1' ? ' sentence' : ' sentences');
+        }
         const dropArea = document.getElementById('dropArea');
         const imageInput = document.getElementById('imageInput');
         const imagePreview = document.getElementById('imagePreview');
@@ -670,6 +724,13 @@ def generate_message():
     if "interests" in match_bio and match_bio["interests"]:
         match_bio_formatted += f"Interests: {', '.join(match_bio['interests'])}"
 
+    # Get sentence count from form, default to 2 if not provided
+    sentence_count = request.form.get("sentence_count", "2")
+    try:
+        sentence_count = int(sentence_count)
+    except ValueError:
+        sentence_count = 2
+        
     prompt = (
         f"User Bio: {user_bio}\n"
         f"Match Bio: {match_bio.get('bio', '')}\n"
@@ -677,7 +738,7 @@ def generate_message():
         f"Match Age: {match_bio.get('age', '')}\n"
         f"Match Interests: {', '.join(match_bio.get('interests', []))}\n"
         f"Image context: {image_context}\n"
-        "Generate a short, friendly first message that references these details."
+        f"Create a first message with approximately {sentence_count} sentence(s). Use the image context details naturally."
     )
 
     openai_api_key = os.environ.get("OPENAI_API_KEY")
@@ -690,10 +751,10 @@ def generate_message():
         completion = client.chat.completions.create(
             model="gpt-4o-mini-2024-07-18",
             messages=[
-                {"role": "system", "content": "You are a dating app first message generator for men messaging women. Create engaging, natural first messages that reference details from profiles and images. Keep messages concise (2-3 sentences), include no more than 1-2 questions, and maintain a friendly, interesting tone without being overly formal or too casual. Focus on creating a message that stands out and encourages a response. Do not be creepy and do not use emojis."},
+                {"role": "system", "content": "You are an expert dating app first message generator for men messaging women. Your specialty is creating authentic, genuine first messages that don't sound generic or fake. Pay close attention to the image context provided and incorporate those details naturally to show you've actually looked at their profile. Adapt your tone based on the match's age - younger (18-24) should be more casual and playful, mid-range (25-35) balanced and interesting, older (36+) slightly more mature but still fun. When referencing image details, be specific rather than vague. Absolutely never create details that weren't mentioned (like fake names or invented scenarios). Include only 1 question maximum, placed at the end. Keep your messages conversational and genuine - write as a real person would text, not like marketing copy. Do not use emojis or be creepy."},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=100,
+            max_tokens=150,
             temperature=0.7,
         )
         generated_message = completion.choices[0].message.content.strip()
