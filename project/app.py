@@ -852,6 +852,25 @@ RESULT_HTML = """
         </div>
         
         <div class="section">
+            <div class="section-title">Token Usage</div>
+            <div class="bio">
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-right: 10px;">
+                        <div style="height: 100%; width: {{ (completion_tokens / total_tokens * 100)|round }}%; background: #4a6ee0;"></div>
+                    </div>
+                    <div style="font-size: 13px; color: #4a5568; min-width: 100px; text-align: right;">
+                        {{ completion_tokens }} / {{ total_tokens }}
+                    </div>
+                </div>
+                <div style="font-size: 13px; color: #718096;">
+                    <strong>Prompt tokens:</strong> {{ prompt_tokens }} &nbsp;&nbsp; 
+                    <strong>Response tokens:</strong> {{ completion_tokens }} &nbsp;&nbsp;
+                    <strong>Total:</strong> {{ total_tokens }}
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
             <div class="section-title">Generated Message</div>
             <div class="message">{{ generated_message }}</div>
         </div>
@@ -1027,6 +1046,11 @@ def generate_message():
             temperature=creativity,
         )
         generated_message = completion.choices[0].message.content.strip()
+        
+        # Get token count information
+        prompt_tokens = completion.usage.prompt_tokens
+        completion_tokens = completion.usage.completion_tokens
+        total_tokens = completion.usage.total_tokens
     except Exception as e:
         return jsonify({"status": "error", "error": f"OpenAI API error: {e}"}), 500
 
@@ -1043,7 +1067,10 @@ def generate_message():
             image_tags=filtered_tags,
             sentence_count=sentence_count,
             tone=tone,
-            creativity=creativity
+            creativity=creativity,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens
         )
 
 if __name__ == "__main__":
