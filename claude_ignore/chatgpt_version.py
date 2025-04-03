@@ -232,14 +232,15 @@ INDEX_HTML = """
       <h2>Dating Assist - First Message Generator</h2>
       <form id="messageForm" action="{{ url_for('generate_message') }}" method="POST" enctype="multipart/form-data">
           <div class="form-group">
-              <label>Upload Images (select or drag multiple images)</label>
+              <label>Upload Images (drag & drop or click to select)</label>
               <div id="dropArea" class="drop-area">
                   <p>Drag & drop images here or click to select files</p>
                   <p style="margin-top: 10px; font-size: 14px; color: #4a6ee0;">Select at least 2 images</p>
-                  <input type="file" id="imageInput" name="images[]" multiple accept="image/*" style="display:none">
+                  <input type="file" id="imageInput" multiple accept="image/*" style="display:none">
               </div>
               <div id="imagePreview" class="image-preview"></div>
               <div id="imageError" class="error"></div>
+              <!-- Hidden inputs to send base64 image data -->
               <input type="hidden" id="image1" name="image1">
               <input type="hidden" id="image2" name="image2">
           </div>
@@ -291,7 +292,6 @@ INDEX_HTML = """
     
     <script>
       document.addEventListener('DOMContentLoaded', function() {
-        // Drop area functionality
         const dropArea = document.getElementById('dropArea');
         const imageInput = document.getElementById('imageInput');
         const imagePreview = document.getElementById('imagePreview');
@@ -299,10 +299,14 @@ INDEX_HTML = """
         const image1Input = document.getElementById('image1');
         const image2Input = document.getElementById('image2');
         const form = document.getElementById('messageForm');
-        const matchBioJson = document.getElementById('match_bio_json');
         
-        // Auto-fill match bio JSON on load
-        updateJsonFromForm();
+        // Match bio fields and JSON preview
+        const matchNameInput = document.getElementById('match_name');
+        const matchAgeInput = document.getElementById('match_age');
+        const matchBioInput = document.getElementById('match_bio');
+        const matchInterestsInput = document.getElementById('match_interests');
+        const matchBioJson = document.getElementById('match_bio_json');
+        const jsonPreview = document.getElementById('json-preview');
         
         // Prevent default drag behaviors
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -312,199 +316,90 @@ INDEX_HTML = """
         
         // Highlight drop area when dragging over it
         ['dragenter', 'dragover'].forEach(eventName => {
-          dropArea.addEventListener(eventName, highlight, false);
+          dropArea.addEventListener(eventName, () => dropArea.classList.add('highlight'), false);
         });
         
         ['dragleave', 'drop'].forEach(eventName => {
-          dropArea.addEventListener(eventName, unhighlight, false);
+          dropArea.addEventListener(eventName, () => dropArea.classList.remove('highlight'), false);
         });
         
         // Handle dropped files
         dropArea.addEventListener('drop', handleDrop, false);
         
-        // Handle click to select files
+        // Handle dropped files function
+        function handleDrop(e) {
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFiles(e.dataTransfer.files);
+          }
+        }
+        
+        // Handle click to open file dialog
         dropArea.addEventListener('click', (e) => {
           e.preventDefault();
-          e.stopPropagation();
           imageInput.click();
         });
         
-        // Handle selected files
+        // Handle file input change event
         imageInput.addEventListener('change', (e) => {
-          e.preventDefault();
           if (imageInput.files && imageInput.files.length > 0) {
             handleFiles(imageInput.files);
           }
         });
         
-        // Display initial status message for images
-        updateHiddenInputs();
-        
-        // Match bio form and JSON generation
-        const matchNameInput = document.getElementById('match_name');
-        const matchAgeInput = document.getElementById('match_age');
-        const matchBioInput = document.getElementById('match_bio');
-        const matchInterestsInput = document.getElementById('match_interests');
-        const matchBioJson = document.getElementById('match_bio_json');
-        const jsonPreview = document.getElementById('json-preview');
-        
-        // Update JSON when form fields change
-        [matchNameInput, matchAgeInput, matchBioInput, matchInterestsInput].forEach(input => {
-          input.addEventListener('input', updateJsonFromForm);
-        });
-        
-        // Update form when JSON changes
-        matchBioJson.addEventListener('input', updateFormFromJson);
-        
-        // Initial JSON update
-        updateJsonFromForm();
-        
-        // Tab switching
-        const tabs = document.querySelectorAll('.tab');
-        const matchBioForm = document.getElementById('match-bio-form');
-        const jsonInput = document.getElementById('json-input');
-        
-        tabs.forEach(tab => {
-          tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            if (tab.dataset.tab === 'form') {
-              matchBioForm.style.display = 'block';
-              jsonInput.style.display = 'none';
-            } else {
-              matchBioForm.style.display = 'none';
-              jsonInput.style.display = 'block';
-            }
-          });
-        });
-        
-        // Form validation before submit
-        form.addEventListener('submit', function(event) {
-          // Ensure we have at least 2 images
-          const imageInputs = [image1Input, image2Input];
-          if (!imageInputs[0].value || !imageInputs[1].value) {
-            event.preventDefault();
-            imageError.textContent = 'Please upload at least 2 images';
-            return false;
-          }
-          
-          // Ensure match bio JSON is valid
-          try {
-            JSON.parse(matchBioJson.value);
-          } catch (e) {
-            event.preventDefault();
-            alert('Invalid JSON format for match bio');
-            return false;
-          }
-          
-          return true;
-        });
-        
-        // Helper functions
-        function preventDefaults(e) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        
-        function highlight() {
-          dropArea.classList.add('highlight');
-        }
-        
-        function unhighlight() {
-          dropArea.classList.remove('highlight');
-        }
-        
-        function handleDrop(e) {
-          console.log('File dropped');
-          const dt = e.dataTransfer;
-          const files = dt.files;
-          if (files && files.length > 0) {
-            console.log(`Dropped ${files.length} files`);
-            handleFiles(files);
-          } else {
-            console.log('No files found in drop event');
-          }
-        }
-        
+        // Process dropped or selected files
         function handleFiles(files) {
-          files = [...files];
-          files = files.filter(file => file.type.startsWith('image/'));
-          
+          files = Array.from(files).filter(file => file.type.startsWith('image/'));
           if (files.length === 0) {
             imageError.textContent = 'Please select image files only';
             return;
           }
-          
           imageError.textContent = '';
-          
-          // Keep track of file count to limit to 10
-          const fileCount = imagePreview.querySelectorAll('.preview-item').length;
-          const remainingSlots = 10 - fileCount;
+          const currentCount = imagePreview.querySelectorAll('.preview-item').length;
+          const remainingSlots = 10 - currentCount;
           const filesToProcess = files.slice(0, remainingSlots);
           
-          filesToProcess.forEach((file) => {
+          filesToProcess.forEach(file => {
             const reader = new FileReader();
-            
-            reader.onload = function(e) {
+            reader.onload = (e) => {
               const div = document.createElement('div');
               div.className = 'preview-item';
-              
               const img = document.createElement('img');
               img.src = e.target.result;
-              
               const removeBtn = document.createElement('button');
               removeBtn.className = 'remove-btn';
               removeBtn.innerHTML = '×';
-              removeBtn.onclick = function(event) {
+              removeBtn.onclick = (event) => {
                 event.preventDefault();
-                event.stopPropagation();
                 div.remove();
                 updateHiddenInputs();
               };
-              
               div.appendChild(img);
               div.appendChild(removeBtn);
               div.dataset.base64 = e.target.result;
-              
               imagePreview.appendChild(div);
               updateHiddenInputs();
             };
-            
             reader.readAsDataURL(file);
           });
-          
-          // Clear the file input so the same files can be added again if needed
           imageInput.value = '';
         }
         
+        // Update hidden inputs with base64 data for the first two images
         function updateHiddenInputs() {
           const previews = imagePreview.querySelectorAll('.preview-item');
+          image1Input.value = previews.length > 0 ? previews[0].dataset.base64 : '';
+          image2Input.value = previews.length > 1 ? previews[1].dataset.base64 : '';
           
-          // Reset inputs
-          image1Input.value = '';
-          image2Input.value = '';
-          
-          // Set values for first two images
-          if (previews.length > 0) {
-            image1Input.value = previews[0].dataset.base64;
-          }
-          
-          if (previews.length > 1) {
-            image2Input.value = previews[1].dataset.base64;
-          }
-          
-          // Update the validation visual feedback
           if (previews.length >= 2) {
-            imageError.textContent = '';
             imageError.style.color = '#4CAF50';
-            imageError.innerHTML = '✓ Images selected';
+            imageError.textContent = '✓ Images selected';
           } else {
             imageError.style.color = '#e53e3e';
             imageError.textContent = `Please select at least 2 images (${previews.length}/2 selected)`;
           }
         }
         
+        // Update JSON preview from match bio form
         function updateJsonFromForm() {
           const json = {
             name: matchNameInput.value || '',
@@ -514,27 +409,51 @@ INDEX_HTML = """
               matchInterestsInput.value.split(',').map(i => i.trim()).filter(i => i) : 
               []
           };
-          
           matchBioJson.value = JSON.stringify(json, null, 2);
           jsonPreview.textContent = JSON.stringify(json, null, 2);
         }
         
+        // Update form from JSON input (if edited manually)
         function updateFormFromJson() {
           try {
             const json = JSON.parse(matchBioJson.value);
-            
             matchNameInput.value = json.name || '';
             matchAgeInput.value = json.age || '';
             matchBioInput.value = json.bio || '';
-            
-            if (Array.isArray(json.interests)) {
-              matchInterestsInput.value = json.interests.join(', ');
-            }
-            
+            matchInterestsInput.value = Array.isArray(json.interests) ? json.interests.join(', ') : '';
             jsonPreview.textContent = matchBioJson.value;
           } catch (e) {
             jsonPreview.textContent = 'Invalid JSON';
           }
+        }
+        
+        // Attach input listeners for match bio fields
+        [matchNameInput, matchAgeInput, matchBioInput, matchInterestsInput].forEach(input => {
+          input.addEventListener('input', updateJsonFromForm);
+        });
+        matchBioJson.addEventListener('input', updateFormFromJson);
+        updateJsonFromForm();
+        
+        // Form validation on submit
+        form.addEventListener('submit', function(event) {
+          if (!image1Input.value || !image2Input.value) {
+            event.preventDefault();
+            imageError.textContent = 'Please upload at least 2 images';
+            return false;
+          }
+          try {
+            JSON.parse(matchBioJson.value);
+          } catch (e) {
+            event.preventDefault();
+            alert('Invalid JSON format for match bio');
+            return false;
+          }
+          return true;
+        });
+        
+        function preventDefaults(e) {
+          e.preventDefault();
+          e.stopPropagation();
         }
       });
     </script>
@@ -652,7 +571,7 @@ RESULT_HTML = """
         
         <div class="section">
             <div class="section-title">Match Bio</div>
-            <div class="bio">{{ match_bio_formatted }}</div>
+            <div class="bio">{{ match_bio_formatted|safe }}</div>
         </div>
         
         <div class="section">
@@ -671,41 +590,26 @@ RESULT_HTML = """
 def analyze_image(image_data):
     """
     Production-level image analysis using Google Cloud Vision API.
-    Accepts base64 image data or file object and returns descriptive text.
+    Accepts base64 image data (string) or file object and returns descriptive text.
     """
     try:
-        # Initialize the Vision API client.
         client = vision.ImageAnnotatorClient()
-        
-        # Handle either file object or base64 data
         if isinstance(image_data, str) and image_data.startswith('data:image'):
-            # Extract the base64 part
             content = base64.b64decode(image_data.split(',')[1])
         else:
-            # It's a file object
             content = image_data.read()
-            
         image = vision.Image(content=content)
-
-        # Perform label detection.
         label_response = client.label_detection(image=image)
         labels = label_response.label_annotations
-        label_descriptions = [label.description for label in labels[:3]]  # top 3 labels
-
-        # Perform landmark detection.
+        label_descriptions = [label.description for label in labels[:3]]
         landmark_response = client.landmark_detection(image=image)
         landmarks = landmark_response.landmark_annotations
         landmark_descriptions = [landmark.description for landmark in landmarks] if landmarks else []
-
-        # Optionally, perform web detection for additional context.
         web_response = client.web_detection(image=image)
         web_detection = web_response.web_detection
         web_entities = web_detection.web_entities
         web_descriptions = [entity.description for entity in web_entities if entity.description] if web_entities else []
-
-        # Merge all descriptive texts, remove duplicates.
         descriptions = list(set(label_descriptions + landmark_descriptions + web_descriptions))
-        # For brevity, return the top 3 descriptions.
         return descriptions[:3]
     except Exception as e:
         print("Error analyzing image with Google Cloud Vision:", e)
@@ -717,28 +621,21 @@ def index():
 
 @app.route("/generate_message", methods=["POST"])
 def generate_message():
-    # Extract images from form data
+    # Retrieve base64 data from hidden inputs
     image1_data = request.form.get('image1')
     image2_data = request.form.get('image2')
-    
-    # Log for debugging
-    print(f"Image1 data received: {bool(image1_data)}, length: {len(image1_data) if image1_data else 0}")
-    print(f"Image2 data received: {bool(image2_data)}, length: {len(image2_data) if image2_data else 0}")
-    
-    # Check that both images are provided
-    if not image1_data or not image2_data:
-        if 'image1' not in request.files or 'image2' not in request.files:
-            return jsonify({"status": "error", "error": "Missing one or both image files."}), 400
-        
-        # If not using base64, fall back to files
-        image1 = request.files['image1']
-        image2 = request.files['image2']
-    else:
-        # Using base64 data
-        image1 = image1_data
-        image2 = image2_data
 
-    # Get the user_bio and match_bio_json from the form data.
+    # If not provided via hidden inputs, check file uploads
+    if not image1_data or not image2_data:
+        if 'image1' in request.files and 'image2' in request.files:
+            image1_data = request.files['image1'].read()
+            image2_data = request.files['image2'].read()
+            # Convert to base64 for consistent handling
+            image1_data = "data:image/jpeg;base64," + base64.b64encode(image1_data).decode('utf-8')
+            image2_data = "data:image/jpeg;base64," + base64.b64encode(image2_data).decode('utf-8')
+        else:
+            return jsonify({"status": "error", "error": "Missing image data."}), 400
+
     user_bio = request.form.get("user_bio")
     match_bio_json = request.form.get("match_bio_json")
     if not user_bio or not match_bio_json:
@@ -749,21 +646,12 @@ def generate_message():
     except Exception as e:
         return jsonify({"status": "error", "error": "Invalid match_bio_json format."}), 400
 
-    # Analyze each image using Google Cloud Vision
-    tags1 = analyze_image(image1)
-    
-    # Reset pointer if using file objects
-    if isinstance(image1, bytes) or hasattr(image1, 'read'):
-        if hasattr(image1, 'seek'):
-            image1.seek(0)
-            
-    tags2 = analyze_image(image2)
-    
-    # Merge and deduplicate descriptions
+    tags1 = analyze_image(image1_data)
+    tags2 = analyze_image(image2_data)
     image_descriptions = list(set(tags1 + tags2))
     image_context = ", ".join(image_descriptions)
 
-    # Format the match bio for display
+    # Format match bio for display
     match_bio_formatted = ""
     if "name" in match_bio:
         match_bio_formatted += f"Name: {match_bio['name']}<br>"
@@ -774,7 +662,6 @@ def generate_message():
     if "interests" in match_bio and match_bio["interests"]:
         match_bio_formatted += f"Interests: {', '.join(match_bio['interests'])}"
 
-    # Construct a concise prompt for the OpenAI API.
     prompt = (
         f"User Bio: {user_bio}\n"
         f"Match Bio: {match_bio.get('bio', '')}\n"
@@ -785,20 +672,17 @@ def generate_message():
         "Generate a short, friendly first message that references these details."
     )
 
-    # Ensure the OpenAI API key is set.
     openai_api_key = os.environ.get("OPENAI_API_KEY")
     if not openai_api_key:
         return jsonify({"status": "error", "error": "OPENAI_API_KEY not set in environment."}), 500
 
-    # Initialize the OpenAI client using the new API interface.
     client = OpenAI(api_key=openai_api_key)
 
     try:
-        # Use the new chat completions API call.
         completion = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini-2024-07-18",
             messages=[
-                {"role": "system", "content": "You are a friendly chat message generator."},
+                {"role": "system", "content": "You are a friendly chat message generator. Do not be creepy and do not use emojis."},
                 {"role": "user", "content": prompt},
             ],
             max_tokens=60,
@@ -808,17 +692,16 @@ def generate_message():
     except Exception as e:
         return jsonify({"status": "error", "error": f"OpenAI API error: {e}"}), 500
 
-    # Return JSON if the client accepts JSON; otherwise, render the result page.
     if "application/json" in request.headers.get("Accept", ""):
         return jsonify({"status": "success", "data": {"generated_message": generated_message}})
     else:
         return render_template_string(
-            RESULT_HTML, 
+            RESULT_HTML,
             generated_message=generated_message,
             user_bio=user_bio,
             match_bio_formatted=match_bio_formatted,
-            image1_data=image1_data if isinstance(image1_data, str) else None,
-            image2_data=image2_data if isinstance(image2_data, str) else None
+            image1_data=image1_data,
+            image2_data=image2_data
         )
 
 if __name__ == "__main__":
