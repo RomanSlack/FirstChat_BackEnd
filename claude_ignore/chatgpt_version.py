@@ -2,7 +2,7 @@
 flask_first_chat.py
 
 A practical "dating assist" product that generates a first chat message by processing:
-- Two image files (for minimal image analysis)
+- Two image files (analyzed via Google Cloud Vision for production-level image context)
 - A user's bio (text)
 - A match's bio (JSON string)
 
@@ -26,10 +26,11 @@ curl -X POST \
 
 Dependencies:
 -------------
-pip install flask openai Pillow
+pip install flask openai Pillow google-cloud-vision
 
-Ensure the environment variable OPENAI_API_KEY is set. For example:
-  export OPENAI_API_KEY="your_openai_api_key_here"
+Ensure the environment variables are set:
+  - GOOGLE_APPLICATION_CREDENTIALS (path to your Google Cloud service account JSON)
+  - OPENAI_API_KEY (your OpenAI API key)
 
 This product is built for practical use, prioritizing good results, low latency, and cost efficiency.
 """
@@ -39,7 +40,8 @@ import json
 from flask import Flask, request, jsonify, render_template_string, redirect, url_for
 from PIL import Image
 import openai
-from openai import OpenAI  # New style: use OpenAI client from the OpenAI package
+from openai import OpenAI  # New API client interface from OpenAI
+from google.cloud import vision
 
 app = Flask(__name__)
 
@@ -106,17 +108,37 @@ RESULT_HTML = """
 
 def analyze_image(image_file):
     """
-    Minimal image analysis using Pillow.
-    This function loads the image and returns a dummy tag list.
-    For production, integrate a lightweight pre-trained model.
+    Production-level image analysis using Google Cloud Vision API.
+    Reads the image file and returns descriptive text based on detected labels and landmarks.
     """
     try:
-        img = Image.open(image_file)
-        width, height = img.size
-        tag = "landscape" if width > height else "portrait"
-        return [tag]
+        # Initialize the Vision API client.
+        client = vision.ImageAnnotatorClient()
+        content = image_file.read()
+        image = vision.Image(content=content)
+
+        # Perform label detection.
+        label_response = client.label_detection(image=image)
+        labels = label_response.label_annotations
+        label_descriptions = [label.description for label in labels[:3]]  # top 3 labels
+
+        # Perform landmark detection.
+        landmark_response = client.landmark_detection(image=image)
+        landmarks = landmark_response.landmark_annotations
+        landmark_descriptions = [landmark.description for landmark in landmarks] if landmarks else []
+
+        # Optionally, perform web detection for additional context.
+        web_response = client.web_detection(image=image)
+        web_detection = web_response.web_detection
+        web_entities = web_detection.web_entities
+        web_descriptions = [entity.description for entity in web_entities if entity.description] if web_entities else []
+
+        # Merge all descriptive texts, remove duplicates.
+        descriptions = list(set(label_descriptions + landmark_descriptions + web_descriptions))
+        # For brevity, return the top 3 descriptions.
+        return descriptions[:3]
     except Exception as e:
-        print("Error processing image:", e)
+        print("Error analyzing image with Google Cloud Vision:", e)
         return ["unknown"]
 
 @app.route("/", methods=["GET"])
@@ -143,19 +165,20 @@ def generate_message():
     except Exception as e:
         return jsonify({"status": "error", "error": "Invalid match_bio_json format."}), 400
 
-    # Perform minimal image analysis on both images.
+    # Analyze each image using Google Cloud Vision.
     tags1 = analyze_image(image1)
-    # Reset the pointer if needed.
+    # Reset pointer if needed.
     image1.seek(0)
     tags2 = analyze_image(image2)
-    tags = list(set(tags1 + tags2))
-    tags_str = ", ".join(tags)
+    # Merge and deduplicate descriptions.
+    image_descriptions = list(set(tags1 + tags2))
+    image_context = ", ".join(image_descriptions)
 
     # Construct a concise prompt for the OpenAI API.
     prompt = (
         f"User Bio: {user_bio}\n"
         f"Match Bio: {match_bio.get('bio', '')}\n"
-        f"Image tags: {tags_str}\n"
+        f"Image context: {image_context}\n"
         "Generate a short, friendly first message that references these details."
     )
 
@@ -170,7 +193,7 @@ def generate_message():
     try:
         # Use the new chat completions API call.
         completion = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # You may change to another model if desired.
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a friendly chat message generator."},
                 {"role": "user", "content": prompt},
@@ -189,5 +212,4 @@ def generate_message():
         return render_template_string(RESULT_HTML, generated_message=generated_message)
 
 if __name__ == "__main__":
-    # Run the Flask server on port 5000.
     app.run(host="0.0.0.0", port=5000, debug=True)
