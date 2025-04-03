@@ -247,7 +247,8 @@ INDEX_HTML = """
           
           <div class="form-group">
               <label for="user_bio">Your Bio:</label>
-              <textarea name="user_bio" id="user_bio" rows="3" placeholder="Enter your bio..." required>Hi, I'm a 22-year-old guy who loves hiking, photography, and trying new coffee shops. I work in tech and enjoy weekend adventures. Looking for someone to share good conversations and outdoor activities.</textarea>
+              <textarea name="user_bio" id="user_bio" rows="3" placeholder="Enter your bio..." required>
+Hey, I’m a 25-year-old architect with a passion for design, travel, and street food. I spend my weekends exploring cities, sketching buildings, and hanging out with my rescue dog, Milo. Looking for someone curious, creative, and down for spontaneous adventures or laid-back park days with the pup.</textarea>
           </div>
           
           <div class="form-group">
@@ -650,6 +651,13 @@ def generate_message():
     tags2 = analyze_image(image2_data)
     image_descriptions = list(set(tags1 + tags2))
     image_context = ", ".join(image_descriptions)
+    
+    # Print image annotation details to console for debugging
+    print("=== IMAGE ANNOTATION DETAILS ===")
+    print(f"Image 1 tags: {tags1}")
+    print(f"Image 2 tags: {tags2}")
+    print(f"Combined image context: {image_context}")
+    print("===============================")
 
     # Format match bio for display
     match_bio_formatted = ""
@@ -682,10 +690,10 @@ def generate_message():
         completion = client.chat.completions.create(
             model="gpt-4o-mini-2024-07-18",
             messages=[
-                {"role": "system", "content": "You are a friendly chat message generator. Do not be creepy and do not use emojis."},
+                {"role": "system", "content": "You are a dating app first message generator for men messaging women. Create engaging, natural first messages that reference details from profiles and images. Keep messages concise (2-3 sentences), include no more than 1-2 questions, and maintain a friendly, interesting tone without being overly formal or too casual. Focus on creating a message that stands out and encourages a response. Do not be creepy and do not use emojis."},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=60,
+            max_tokens=100,
             temperature=0.7,
         )
         generated_message = completion.choices[0].message.content.strip()
