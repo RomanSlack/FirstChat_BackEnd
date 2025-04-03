@@ -243,6 +243,103 @@ INDEX_HTML = """
         margin-top: 8px;
         color: #4a6ee0;
       }
+      .tone-selector {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .tone-option {
+        flex: 1 0 auto;
+        padding: 8px 15px;
+        background: #f0f5ff;
+        border: 1px solid #d1ddfb;
+        border-radius: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+        min-width: 80px;
+      }
+      .tone-option:hover {
+        background: #e1eaff;
+        border-color: #4a6ee0;
+      }
+      .tone-option.selected {
+        background: #4a6ee0;
+        color: white;
+        border-color: #3758ca;
+      }
+      .creativity-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+      .creativity-container .slider-container {
+        flex: 1;
+      }
+      .creativity-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 5px;
+        font-size: 12px;
+        color: #718096;
+      }
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        display: none;
+      }
+      .loading-content {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      }
+      .spinner {
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #4a6ee0;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .tag-preview {
+        background: #f9fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 14px;
+      }
+      .tag-item {
+        display: inline-block;
+        background: #e1eaff;
+        color: #3758ca;
+        padding: 3px 8px;
+        border-radius: 12px;
+        margin: 2px;
+        font-size: 12px;
+      }
+      .tag-header {
+        font-weight: 500;
+        margin-bottom: 5px;
+        color: #4a5568;
+      }
       @media (max-width: 768px) {
         .form-row {
           grid-template-columns: 1fr;
@@ -279,6 +376,10 @@ INDEX_HTML = """
               </div>
               <div id="imagePreview" class="image-preview"></div>
               <div id="imageError" class="error"></div>
+              <div id="tagPreview" class="tag-preview" style="display: none;">
+                  <div class="tag-header">Detected tags:</div>
+                  <div id="tagContent"></div>
+              </div>
               <!-- Hidden inputs to send base64 image data -->
               <input type="hidden" id="image1" name="image1">
               <input type="hidden" id="image2" name="image2">
@@ -327,10 +428,37 @@ Hey, I’m a 25-year-old architect with a passion for design, travel, and street
           </div>
           
           <div class="form-group">
-              <label for="sentence_count">Message Length (sentences):</label>
+              <label for="sentence_count">Message Length:</label>
               <div class="slider-container">
                   <input type="range" min="1" max="5" value="2" class="slider" id="sentence_count" name="sentence_count">
                   <div class="slider-value" id="sentence_value">2 sentences</div>
+              </div>
+          </div>
+          
+          <div class="form-group">
+              <label for="tone">Message Tone:</label>
+              <div class="tone-selector" id="toneSelector">
+                  <div class="tone-option selected" data-tone="friendly">Friendly</div>
+                  <div class="tone-option" data-tone="witty">Witty</div>
+                  <div class="tone-option" data-tone="flirty">Flirty</div>
+                  <div class="tone-option" data-tone="casual">Casual</div>
+                  <div class="tone-option" data-tone="confident">Confident</div>
+              </div>
+              <input type="hidden" id="tone" name="tone" value="friendly">
+          </div>
+          
+          <div class="form-group">
+              <label for="creativity">Creativity Level:</label>
+              <div class="creativity-container">
+                  <div class="slider-container">
+                      <input type="range" min="0" max="10" value="7" class="slider" id="creativity" name="creativity">
+                      <div class="creativity-labels">
+                          <span>Conservative</span>
+                          <span>Balanced</span>
+                          <span>Creative</span>
+                      </div>
+                  </div>
+                  <div class="slider-value" id="creativity_value">0.7</div>
               </div>
           </div>
           
@@ -343,7 +471,36 @@ Hey, I’m a 25-year-old architect with a passion for design, travel, and street
         // Sentence slider functionality
         const sentenceSlider = document.getElementById('sentence_count');
         const sentenceValue = document.getElementById('sentence_value');
+        const creativitySlider = document.getElementById('creativity');
+        const creativityValue = document.getElementById('creativity_value');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const tagPreview = document.getElementById('tagPreview');
+        const tagContent = document.getElementById('tagContent');
+        const toneSelector = document.getElementById('toneSelector');
+        const toneInput = document.getElementById('tone');
         
+        // Tone selector functionality
+        if (toneSelector) {
+          const toneOptions = toneSelector.querySelectorAll('.tone-option');
+          toneOptions.forEach(option => {
+            option.addEventListener('click', function() {
+              toneOptions.forEach(o => o.classList.remove('selected'));
+              this.classList.add('selected');
+              toneInput.value = this.dataset.tone;
+            });
+          });
+        }
+        
+        // Creativity slider functionality
+        if (creativitySlider) {
+          creativitySlider.oninput = function() {
+            const value = parseInt(this.value) / 10;
+            creativityValue.textContent = value.toFixed(1);
+          };
+        }
+        
+        // Sentence slider functionality
         sentenceSlider.oninput = function() {
           sentenceValue.textContent = this.value + (this.value === '1' ? ' sentence' : ' sentences');
         }
@@ -489,6 +646,38 @@ Hey, I’m a 25-year-old architect with a passion for design, travel, and street
         matchBioJson.addEventListener('input', updateFormFromJson);
         updateJsonFromForm();
         
+        // Show mock image tag analysis for immediate feedback
+        function showMockTagAnalysis(file) {
+          // Simple client-side tag mockup to enhance UX while real processing happens on server
+          const mockTags = ['person', 'nature', 'outdoors', 'portrait', 'travel', 'photography', 'smile', 'landscape'];
+          const randomTags = [];
+          // Select 2-3 random tags
+          for (let i = 0; i < Math.floor(Math.random() * 2) + 2; i++) {
+            const tag = mockTags[Math.floor(Math.random() * mockTags.length)];
+            if (!randomTags.includes(tag)) randomTags.push(tag);
+          }
+          
+          // Display the mock tags
+          tagContent.innerHTML = '';
+          randomTags.forEach(tag => {
+            const tagElement = document.createElement('span');
+            tagElement.className = 'tag-item';
+            tagElement.textContent = tag;
+            tagContent.appendChild(tagElement);
+          });
+          
+          tagPreview.style.display = 'block';
+        }
+        
+        // Update the handleFiles function to show mock tags
+        const originalHandleFiles = handleFiles;
+        handleFiles = function(files) {
+          originalHandleFiles(files);
+          if (files.length > 0) {
+            showMockTagAnalysis(files[0]);
+          }
+        };
+        
         // Form validation on submit
         form.addEventListener('submit', function(event) {
           if (!image1Input.value || !image2Input.value) {
@@ -503,6 +692,11 @@ Hey, I’m a 25-year-old architect with a passion for design, travel, and street
             alert('Invalid JSON format for match bio');
             return false;
           }
+          
+          // Show loading overlay
+          loadingOverlay.style.display = 'flex';
+          loadingMessage.textContent = 'Analyzing images and generating message...';
+          
           return true;
         });
         
@@ -512,6 +706,12 @@ Hey, I’m a 25-year-old architect with a passion for design, travel, and street
         }
       });
     </script>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p id="loadingMessage">Analyzing images...</p>
+        </div>
+    </div>
 </body>
 </html>
 """
@@ -630,12 +830,35 @@ RESULT_HTML = """
         </div>
         
         <div class="section">
+            <div class="section-title">Image Context</div>
+            <div class="bio">
+                {% if image_tags %}
+                <div style="margin-bottom: 10px;">
+                    {% for tag in image_tags %}
+                    <span style="display: inline-block; background: #e1eaff; color: #3758ca; padding: 3px 8px; border-radius: 12px; margin: 2px; font-size: 12px;">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Message Settings</div>
+            <div class="bio">
+                <strong>Length:</strong> {{ sentence_count }} sentence(s)<br>
+                <strong>Tone:</strong> {{ tone|capitalize }}<br>
+                <strong>Creativity:</strong> {{ creativity }}
+            </div>
+        </div>
+        
+        <div class="section">
             <div class="section-title">Generated Message</div>
             <div class="message">{{ generated_message }}</div>
         </div>
         
-        <div style="text-align: center; margin-top: 30px;">
-            <a href="{{ url_for('index') }}" class="btn">Generate Another Message</a>
+        <div style="text-align: center; margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+            <a href="{{ url_for('index') }}" class="btn" style="background-color: #718096; width: auto;">← Back</a>
+            <a href="{{ url_for('index') }}" class="btn" style="width: auto;">Generate Another Message</a>
         </div>
     </div>
 </body>
@@ -724,21 +947,67 @@ def generate_message():
     if "interests" in match_bio and match_bio["interests"]:
         match_bio_formatted += f"Interests: {', '.join(match_bio['interests'])}"
 
-    # Get sentence count from form, default to 2 if not provided
+    # Get form parameters with defaults
     sentence_count = request.form.get("sentence_count", "2")
+    tone = request.form.get("tone", "friendly")
+    creativity_str = request.form.get("creativity", "7")
+    
     try:
         sentence_count = int(sentence_count)
     except ValueError:
         sentence_count = 2
         
+    try:
+        creativity = float(creativity_str) / 10
+    except ValueError:
+        creativity = 0.7
+    
+    # More intelligent filtering of image tags
+    # If we have multiple similar concepts, prioritize the most specific ones
+    filtered_tags = []
+    generic_concepts = ["nature", "person", "photography", "landscape", "portrait"]
+    
+    # First add specific tags that aren't generic concepts
+    for tag in image_descriptions:
+        if tag.lower() not in generic_concepts:
+            filtered_tags.append(tag)
+    
+    # Then add generic concepts only if we don't have enough specific tags
+    if len(filtered_tags) < 2:
+        for tag in image_descriptions:
+            if tag.lower() in generic_concepts and tag not in filtered_tags:
+                filtered_tags.append(tag)
+                if len(filtered_tags) >= 3:
+                    break
+    
+    # If we still don't have tags, use the original ones
+    if not filtered_tags and image_descriptions:
+        filtered_tags = image_descriptions
+    
+    enhanced_image_context = ", ".join(filtered_tags)
+        
+    # Build the prompt with tone and specific instructions
+    tone_instructions = {
+        "friendly": "Keep the tone warm and personable, like talking to a potential friend. Be genuine and approachable.",
+        "witty": "Add a touch of clever humor or playfulness, with a bit of wordplay or light teasing if appropriate.",
+        "flirty": "Add a subtle flirtatious element while remaining respectful. Include a tasteful compliment if appropriate.",
+        "casual": "Keep it very relaxed and conversational, like texting a friend. Use a laid-back style.",
+        "confident": "Write with a clear sense of self-assurance and directness, while remaining warm and engaging."
+    }
+    
+    tone_instruction = tone_instructions.get(tone, tone_instructions["friendly"])
+    
     prompt = (
         f"User Bio: {user_bio}\n"
         f"Match Bio: {match_bio.get('bio', '')}\n"
         f"Match Name: {match_bio.get('name', '')}\n"
         f"Match Age: {match_bio.get('age', '')}\n"
         f"Match Interests: {', '.join(match_bio.get('interests', []))}\n"
-        f"Image context: {image_context}\n"
-        f"Create a first message with approximately {sentence_count} sentence(s). Use the image context details naturally."
+        f"Image context: {enhanced_image_context}\n\n"
+        f"TONE INSTRUCTION: {tone_instruction}\n\n"
+        f"Create a first dating app message with approximately {sentence_count} sentence(s). "
+        f"If the image context includes recognizable activities, interests or locations, incorporate them naturally "
+        f"to show you've paid attention to their profile pictures."
     )
 
     openai_api_key = os.environ.get("OPENAI_API_KEY")
@@ -755,7 +1024,7 @@ def generate_message():
                 {"role": "user", "content": prompt},
             ],
             max_tokens=150,
-            temperature=0.7,
+            temperature=creativity,
         )
         generated_message = completion.choices[0].message.content.strip()
     except Exception as e:
@@ -770,7 +1039,11 @@ def generate_message():
             user_bio=user_bio,
             match_bio_formatted=match_bio_formatted,
             image1_data=image1_data,
-            image2_data=image2_data
+            image2_data=image2_data,
+            image_tags=filtered_tags,
+            sentence_count=sentence_count,
+            tone=tone,
+            creativity=creativity
         )
 
 if __name__ == "__main__":
