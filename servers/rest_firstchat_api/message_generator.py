@@ -17,7 +17,8 @@ import asyncio
 
 from google.cloud import vision
 from openai import AsyncOpenAI
-
+import dotenv
+dotenv.load_dotenv()
 
 async def analyze_image_async(image_data: str) -> List[str]:
     """
