@@ -165,4 +165,6 @@ async def generate_message(
 
 # Run the API server if executed as main module
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8002, reload=True)
+    print("Starting FirstChat API server on http://0.0.0.0:8002")
+    print("API documentation available at http://localhost:8002/docs")
+    uvicorn.run(app, host="0.0.0.0", port=8002)

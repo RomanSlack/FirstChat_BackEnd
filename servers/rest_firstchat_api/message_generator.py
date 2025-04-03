@@ -216,7 +216,7 @@ async def generate_message_async(
                 "content": prompt
             },
         ],
-        max_tokens=150,
+        max_tokens=200,
         temperature=creativity,
     )
     
