@@ -1,0 +1,111 @@
+2025-04-03 19:16:50 | INFO     | Starting FirstChat Profile Scraper
+2025-04-03 19:16:50 | INFO     | Target URL: http://localhost:3000
+2025-04-03 19:16:50 | INFO     | API Endpoint: http://localhost:8002/generate_message
+2025-04-03 19:16:50 | ERROR    | Unexpected error in scraper: BrowserType.launch: Executable doesn't exist at /home/roman-slack/.cache/ms-playwright/chromium_headless_shell-1161/chrome-linux/headless_shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+Traceback (most recent call last):
+
+  File "/home/roman-slack/FirstChat_BackEnd/scraper_layer/main.py", line 139, in <module>
+    main()
+    └ <function main at 0x7480c6284040>
+
+  File "/home/roman-slack/FirstChat_BackEnd/scraper_layer/main.py", line 135, in main
+    asyncio.run(run_scraper())
+    │       │   └ <function run_scraper at 0x7480c6b89440>
+    │       └ <function run at 0x7480c7cd45e0>
+    └ <module 'asyncio' from '/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/asyncio/__init__.py'>
+
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           │      │   └ <coroutine object run_scraper at 0x7480c65ef8b0>
+           │      └ <function Runner.run at 0x7480c7db00e0>
+           └ <asyncio.runners.Runner object at 0x7480c65febd0>
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           │    │     │                  └ <Task pending name='Task-1' coro=<run_scraper() running at /home/roman-slack/FirstChat_BackEnd/scraper_layer/main.py:124> cb=...
+           │    │     └ <function BaseEventLoop.run_until_complete at 0x7480c7dadd00>
+           │    └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+           └ <asyncio.runners.Runner object at 0x7480c65febd0>
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/asyncio/base_events.py", line 678, in run_until_complete
+    self.run_forever()
+    │    └ <function BaseEventLoop.run_forever at 0x7480c7dadc60>
+    └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/asyncio/base_events.py", line 645, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x7480c7dafa60>
+    └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/asyncio/base_events.py", line 1999, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x7480c7cd5c60>
+    └ <Handle Task.task_wakeup(<Future finished result=None>)>
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/asyncio/events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle Task.task_wakeup(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle Task.task_wakeup(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle Task.task_wakeup(<Future finished result=None>)>
+
+> File "/home/roman-slack/FirstChat_BackEnd/scraper_layer/main.py", line 65, in run_scraper
+    browser, context, page = await initialize_browser()
+                                   └ <function initialize_browser at 0x7480c6bd4a40>
+
+  File "/home/roman-slack/FirstChat_BackEnd/scraper_layer/browser.py", line 34, in initialize_browser
+    browser = await playwright.chromium.launch(headless=config.HEADLESS)
+                    │          │                        │      └ True
+                    │          │                        └ ScraperConfig(TARGET_URL='http://localhost:3000', API_ENDPOINT='http://localhost:8002/generate_message', USER_BIO="I'm a 28-y...
+                    │          └ <property object at 0x7480c69f99e0>
+                    └ <playwright._impl._playwright.Playwright object at 0x7480c7d70bc0>
+
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 14450, in launch
+    await self._impl_obj.launch(
+          │    │         └ <function BrowserType.launch at 0x7480c69c6f20>
+          │    └ <BrowserType name=chromium executable_path=/home/roman-slack/.cache/ms-playwright/chromium-1161/chrome-linux/chrome>
+          └ <BrowserType name=chromium executable_path=/home/roman-slack/.cache/ms-playwright/chromium-1161/chrome-linux/chrome>
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/site-packages/playwright/_impl/_browser_type.py", line 96, in launch
+    Browser, from_channel(await self._channel.send("launch", params))
+    │        │                  │    │        │              └ {'headless': True}
+    │        │                  │    │        └ <function Channel.send at 0x7480c6a34040>
+    │        │                  │    └ <playwright._impl._connection.Channel object at 0x7480c62783b0>
+    │        │                  └ <BrowserType name=chromium executable_path=/home/roman-slack/.cache/ms-playwright/chromium-1161/chrome-linux/chrome>
+    │        └ <function from_channel at 0x7480c6bd5b20>
+    └ <class 'playwright._impl._browser.Browser'>
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 61, in send
+    return await self._connection.wrap_api_call(
+                 │    │           └ <function Connection.wrap_api_call at 0x7480c6a8c860>
+                 │    └ <playwright._impl._connection.Connection object at 0x7480c6ab4590>
+                 └ <playwright._impl._connection.Channel object at 0x7480c62783b0>
+  File "/home/roman-slack/anaconda3/envs/Personal/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 528, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+          │                       └ {'frames': [{'file': '/home/roman-slack/FirstChat_BackEnd/scraper_layer/browser.py', 'line': 34, 'column': 0, 'function': 'in...
+          └ <function rewrite_error at 0x7480c6bd4fe0>
+
+playwright._impl._errors.Error: BrowserType.launch: Executable doesn't exist at /home/roman-slack/.cache/ms-playwright/chromium_headless_shell-1161/chrome-linux/headless_shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+2025-04-03 19:16:50 | INFO     | Scraper execution completed in 0.17 seconds
+2025-04-03 19:21:45 | INFO     | Starting FirstChat Profile Scraper
+2025-04-03 19:21:45 | INFO     | Target URL: http://localhost:3000
+2025-04-03 19:21:45 | INFO     | API Endpoint: http://localhost:8002/generate_message
+2025-04-03 19:21:45 | INFO     | Creating new browser session
+2025-04-03 19:21:45 | INFO     | Navigating to http://localhost:3000
+2025-04-03 19:21:45 | INFO     | Successfully navigated to profile page
+2025-04-03 19:21:45 | INFO     | Extracted profile data: Name: N/A, Age: N/A, Images: 0
+2025-04-03 19:21:45 | ERROR    | Could not extract profile name. Exiting.
+2025-04-03 19:21:45 | INFO     | Session saved to browser_sessions/dating_app_session
+2025-04-03 19:21:45 | INFO     | Browser resources closed
+2025-04-03 19:21:45 | INFO     | Scraper execution completed in 0.67 seconds
