@@ -20,6 +20,87 @@ from loguru import logger
 from config import config
 
 
+async def extract_cookies_from_chrome(profile_path: str) -> Optional[List[Dict[str, Any]]]:
+    """
+    Extract cookies from Chrome profile for specific domains.
+    
+    Args:
+        profile_path: Path to Chrome profile directory
+        
+    Returns:
+        List of cookies or None if extraction failed
+    """
+    try:
+        # Path to Chrome cookies database
+        cookies_db = os.path.join(profile_path, "Cookies")
+        cookies_db_copy = os.path.join(profile_path, "Cookies.copy")
+        
+        # Check if the cookies file exists
+        if not os.path.exists(cookies_db):
+            logger.error(f"Cookies database not found at: {cookies_db}")
+            return None
+            
+        # We need to make a copy of the database since Chrome might have it locked
+        import shutil
+        try:
+            shutil.copy2(cookies_db, cookies_db_copy)
+        except Exception as e:
+            logger.error(f"Failed to copy cookies database: {str(e)}")
+            return None
+            
+        # Try to extract cookies using sqlite3
+        try:
+            import sqlite3
+            import time
+            from datetime import datetime
+            
+            # Connect to the database
+            conn = sqlite3.connect(cookies_db_copy)
+            cursor = conn.cursor()
+            
+            # Query cookies for specific domains related to Tinder
+            cursor.execute(
+                "SELECT host_key, name, value, path, expires_utc, is_secure, is_httponly "
+                "FROM cookies WHERE host_key LIKE '%tinder.com%'"
+            )
+            
+            cookies = []
+            for row in cursor.fetchall():
+                host, name, value, path, expires, secure, httponly = row
+                # Convert Chrome's expiry format to timestamp
+                expires_timestamp = int(expires / 1000000) - 11644473600
+                
+                cookie = {
+                    "name": name,
+                    "value": value,
+                    "domain": host,
+                    "path": path,
+                    "expires": expires_timestamp,
+                    "secure": bool(secure),
+                    "httpOnly": bool(httponly)
+                }
+                cookies.append(cookie)
+                
+            logger.info(f"Extracted {len(cookies)} cookies from Chrome profile")
+            return cookies
+            
+        except Exception as sqlite_err:
+            logger.error(f"Failed to extract cookies from database: {str(sqlite_err)}")
+            return None
+            
+        finally:
+            # Clean up the copy
+            try:
+                if os.path.exists(cookies_db_copy):
+                    os.remove(cookies_db_copy)
+            except:
+                pass
+    
+    except Exception as e:
+        logger.error(f"Error extracting cookies from Chrome profile: {str(e)}")
+        return None
+
+
 async def initialize_browser(playwright: Playwright) -> Tuple[Browser, BrowserContext, Page]:
     """
     Initialize browser with Playwright for Tinder scraping.
@@ -30,58 +111,94 @@ async def initialize_browser(playwright: Playwright) -> Tuple[Browser, BrowserCo
     Returns:
         Tuple containing Browser, BrowserContext, and Page objects
     """
+    # Find Chrome executable path if specified
+    chrome_executable = config.CHROME_EXECUTABLE_PATH
+    if chrome_executable and not os.path.exists(chrome_executable):
+        # Default to standard locations if specified but doesn't exist
+        chrome_executable = None
+        
+    if not chrome_executable:
+        # Try to find Chrome executable in standard locations
+        chrome_executable = "/usr/bin/google-chrome"  # Default on Ubuntu
+        if not os.path.exists(chrome_executable):
+            # Try alternative locations
+            alternatives = [
+                "/usr/bin/google-chrome-stable",
+                "/usr/bin/chromium-browser",
+                "/usr/bin/chromium",
+                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",  # macOS
+                "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",  # Windows
+                "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"  # Windows (32-bit)
+            ]
+            for alt in alternatives:
+                if os.path.exists(alt):
+                    chrome_executable = alt
+                    break
+    
     # Launch browser with appropriate settings
     if config.CHROME_PROFILE_PATH:
         # Use existing Chrome profile if path is provided
         logger.info(f"Using Chrome profile from: {config.CHROME_PROFILE_PATH}")
+        logger.info(f"Using Chrome executable: {chrome_executable or 'Default'}")
         
-        # Find Chrome executable path
-        chrome_executable = config.CHROME_EXECUTABLE_PATH
-        if not chrome_executable or not os.path.exists(chrome_executable):
-            # Default to standard locations if not specified
-            chrome_executable = "/usr/bin/google-chrome"  # Default on Ubuntu
-            if not os.path.exists(chrome_executable):
-                # Try alternative locations
-                alternatives = [
-                    "/usr/bin/google-chrome-stable",
-                    "/usr/bin/chromium-browser",
-                    "/usr/bin/chromium",
-                    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",  # macOS
-                    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",  # Windows
-                    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"  # Windows (32-bit)
-                ]
-                for alt in alternatives:
-                    if os.path.exists(alt):
-                        chrome_executable = alt
-                        break
-        
-        if not chrome_executable or not os.path.exists(chrome_executable):
-            raise FileNotFoundError("Could not find Chrome executable. Please specify it with CHROME_EXECUTABLE_PATH.")
+        # Try alternative approach: Launch browser normally, then load cookies from profile
+        try:
+            # Launch browser without persistent context
+            browser = await playwright.chromium.launch(
+                executable_path=chrome_executable if chrome_executable else None,
+                headless=config.HEADLESS,
+                args=[
+                    '--no-first-run',
+                    '--no-default-browser-check',
+                    '--disable-extensions-except=',
+                    '--disable-infobars',
+                    # Mobile emulation parameters
+                    '--force-device-scale-factor=3',
+                    '--force-mobile',
+                ],
+                ignore_default_args=['--enable-automation'],
+            )
             
-        logger.info(f"Using Chrome executable: {chrome_executable}")
+            # Create mobile device context
+            iphone = playwright.devices['iPhone 12 Pro Max']
+            context = await browser.new_context(**iphone)
+            
+            # Extract cookies from Chrome profile and add them to the context
+            cookies = await extract_cookies_from_chrome(config.CHROME_PROFILE_PATH)
+            if cookies:
+                # Add cookies to the context
+                await context.add_cookies(cookies)
+                logger.info(f"Added {len(cookies)} cookies from Chrome profile")
+            else:
+                logger.warning("Failed to extract cookies from Chrome profile")
         
-        # Launch browser with persistent context using the specific Chrome executable
-        browser = await playwright.chromium.launch_persistent_context(
-            user_data_dir=config.CHROME_PROFILE_PATH,
-            executable_path=chrome_executable,
-            headless=config.HEADLESS,
-            args=[
-                f'--user-data-dir={config.CHROME_PROFILE_PATH}',
-                '--no-first-run',
-                '--no-default-browser-check',
-                '--disable-extensions-except=',
-                '--disable-infobars',
-                '--user-agent=' + config.USER_AGENT,
-                # Mobile emulation
-                '--enable-features=UseOzonePlatform',
-                '--ozone-platform=headless',
-                # Add more flags as needed
-            ],
-            ignore_default_args=['--enable-automation'],  # Don't show the automation notice
-            viewport={"width": 430, "height": 932},
-            device_scale_factor=3,
-        )
-        context = browser
+        except Exception as e:
+            logger.error(f"Failed to create context with cookies: {str(e)}")
+            logger.info("Falling back to direct profile access")
+            
+            # Fallback: launch with persistent context
+            # Launch browser with persistent context using the specific Chrome executable
+            browser = await playwright.chromium.launch_persistent_context(
+                user_data_dir=config.CHROME_PROFILE_PATH,
+                executable_path=chrome_executable if chrome_executable else None,
+                headless=config.HEADLESS,
+                args=[
+                    # Do NOT specify --user-data-dir here - it's already provided as the user_data_dir parameter
+                    '--no-first-run',
+                    '--no-default-browser-check',
+                    '--disable-extensions-except=',
+                    '--disable-infobars',
+                    '--user-agent=' + config.USER_AGENT,
+                    # Mobile emulation parameters
+                    '--force-device-scale-factor=3',
+                    '--force-mobile',
+                    '--enable-viewport',
+                ],
+                ignore_default_args=['--enable-automation'],
+                viewport={"width": 430, "height": 932},
+                device_scale_factor=3,
+            )
+            context = browser
     else:
         # Create session storage directory if it doesn't exist
         os.makedirs(config.SESSION_STORAGE_DIR, exist_ok=True)
@@ -117,17 +234,47 @@ async def initialize_browser(playwright: Playwright) -> Tuple[Browser, BrowserCo
     # Create a new page
     page = await context.new_page()
     
-    # Enable mobile emulation if using chrome profile
+    # Try to enable mobile emulation explicitly using CDP
     if config.CHROME_PROFILE_PATH:
-        await page.evaluate("""
-        () => {
-            // Attempt to trigger mobile view if not already active
-            const meta = document.createElement('meta');
-            meta.name = 'viewport';
-            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-            document.getElementsByTagName('head')[0].appendChild(meta);
-        }
-        """)
+        try:
+            # Create a CDP session
+            cdp_client = await context.new_cdp_session(page)
+            
+            # Configure mobile emulation
+            await cdp_client.send('Emulation.setDeviceMetricsOverride', {
+                'mobile': True,
+                'width': 430,
+                'height': 932,
+                'deviceScaleFactor': 3.0,
+                'screenOrientation': {'type': 'portraitPrimary', 'angle': 0}
+            })
+            
+            # Set mobile user agent
+            await cdp_client.send('Emulation.setUserAgentOverride', {
+                'userAgent': config.USER_AGENT,
+                'platform': 'iPhone'
+            })
+            
+            # Force touch support
+            await cdp_client.send('Emulation.setTouchEmulationEnabled', {
+                'enabled': True,
+                'maxTouchPoints': 5
+            })
+            
+            logger.info("Successfully enabled mobile emulation via CDP")
+        except Exception as e:
+            logger.warning(f"Failed to set up CDP device emulation: {str(e)}")
+            
+            # Fall back to JavaScript approach
+            await page.evaluate("""
+            () => {
+                // Attempt to trigger mobile view if not already active
+                const meta = document.createElement('meta');
+                meta.name = 'viewport';
+                meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+                document.getElementsByTagName('head')[0].appendChild(meta);
+            }
+            """)
     
     return browser, context, page
 
