@@ -115,6 +115,15 @@ async def run_tinder_scraper(profile_count: int = 1, capture_delay: float = 0.5)
                     if not profile_data.get("name"):
                         logger.error("Could not extract profile name. Stopping.")
                         return
+                        
+                    # Check if Profile Photo 1 was found in the labeled URLs
+                    if not any(key == "Profile Photo 1" for key in profile_data.get("labeled_image_urls", {}).keys()):
+                        logger.error("CRITICAL ERROR: Profile Photo 1 not found in labeled URLs - aborting processing")
+                        # Take a screenshot for reference
+                        screenshot_path = os.path.join(config.OUTPUT_DIR, "missing_profile_photo_1.png")
+                        await page.screenshot(path=screenshot_path)
+                        logger.error(f"Screenshot saved to {screenshot_path}")
+                        return
                     
                     # Process the profile data (download images, save JSON)
                     processed_data = await process_profile_data(profile_data)

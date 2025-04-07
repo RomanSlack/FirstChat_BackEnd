@@ -338,7 +338,7 @@ async def extract_images(page: Page) -> List[str]:
             if (!firstSlide) return null;
             
             const ariaLabel = firstSlide.getAttribute('aria-label');
-            const totalImagesMatch = ariaLabel ? ariaLabel.match(/(\d+)$/) : null;
+            const totalImagesMatch = ariaLabel ? ariaLabel.match(/(\\d+)$/) : null;
             const totalImages = totalImagesMatch ? parseInt(totalImagesMatch[1]) : 0;
             
             return {
@@ -532,99 +532,105 @@ async def extract_images(page: Page) -> List[str]:
         left_tap_x = int(screen_width * 0.2)   # 20% from left
         tap_y = int(screen_height * 0.3)       # 30% from top
         
-        # Loop through each remaining image
+        # Try a more direct approach for carousel navigation
+        # Instead of tapping, we'll use JavaScript to directly find and extract each image
+        
+        # Get all the slides first
+        all_slides = await page.evaluate('''() => {
+            const slides = document.querySelectorAll('.keen-slider__slide');
+            const results = [];
+            
+            slides.forEach(slide => {
+                results.push({
+                    id: slide.id,
+                    label: slide.getAttribute('aria-label'),
+                    hidden: slide.getAttribute('aria-hidden') === 'true'
+                });
+            });
+            
+            return results;
+        }''')
+        
+        logger.info(f"Found {len(all_slides)} slides in carousel: {all_slides}")
+        
+        # Process each slide directly without tapping
         for i in range(2, total_images + 1):
             logger.info(f"Processing image #{i} of {total_images}...")
             
-            # Tap right to advance to the next image
-            await page.mouse.click(right_tap_x, tap_y)
-            logger.info(f"Tapped right at coordinates ({right_tap_x}, {tap_y})")
+            # We'll extract each image directly by finding the matching slide instead of trying to navigate
+            slide_id = None
             
-            # Wait for the slide transition
-            await asyncio.sleep(0.5)  # Increased delay for reliability
-            
-            # Verify we're on the correct slide
-            slide_check = await page.evaluate('''() => {
-                const slide = document.querySelector('.keen-slider__slide[aria-hidden="false"]');
-                return slide ? slide.getAttribute('aria-label') : null;
-            }''')
-            logger.info(f"Current slide: {slide_check}")
-            
-            # Extract the current image using the same enhanced approach as for the first image
-            image_data = await page.evaluate('''(imageNumber) => {
-                // Find the currently visible slide
-                const slide = document.querySelector('.keen-slider__slide[aria-hidden="false"]');
-                if (!slide) return { error: "No visible slide found" };
+            # Find the slide ID that corresponds to this image number
+            for slide in all_slides:
+                if slide.get('label') and f"{i} of " in slide.get('label'):
+                    slide_id = slide.get('id')
+                    break
+                    
+            if not slide_id:
+                logger.warning(f"Could not find slide ID for image #{i}")
+                continue
                 
-                // Get the aria-label for numbering
-                const slideLabel = slide.getAttribute('aria-label');
-                if (!slideLabel || !slideLabel.includes(imageNumber)) {
+            logger.info(f"Found slide ID '{slide_id}' for image #{i}")
+            
+            # Now extract image data directly from this slide using its ID
+            image_data = await page.evaluate('''(slideId) => {
+                // Find the slide by ID
+                const slide = document.getElementById(slideId);
+                if (!slide) {
+                    return { error: "Slide not found by ID" };
+                }
+                
+                // Find image div within this slide
+                const imgDiv = slide.querySelector('div[style*="background-image"]') || 
+                               slide.querySelector('div[role="img"]') ||
+                               slide.querySelector('div[aria-label*="Profile Photo"]');
+                               
+                if (!imgDiv) {
                     return { 
-                        error: "Wrong slide number", 
-                        expected: imageNumber,
-                        actual: slideLabel
+                        error: "No image div found in slide",
+                        slideId: slideId
                     };
                 }
                 
-                // Try multiple approaches to find the image div
-                let imgDiv = null;
-                let approachUsed = "";
-                
-                // Approach 1: Find div with background-image in style
-                imgDiv = slide.querySelector('div[style*="background-image"]');
-                if (imgDiv) approachUsed = "background-image-style";
-                
-                // Approach 2: Find div with role="img"
-                if (!imgDiv) {
-                    imgDiv = slide.querySelector('div[role="img"]');
-                    if (imgDiv) approachUsed = "role-img";
-                }
-                
-                // Approach 3: Find div with aria-label containing "Profile Photo"
-                if (!imgDiv) {
-                    imgDiv = slide.querySelector('div[aria-label*="Profile Photo"]');
-                    if (imgDiv) approachUsed = "aria-label-profile-photo";
-                }
-                
-                // Approach 4: Just take the first div with a style attribute
-                if (!imgDiv) {
-                    const allDivs = slide.querySelectorAll('div[style]');
-                    if (allDivs.length > 0) {
-                        imgDiv = allDivs[0];
-                        approachUsed = "first-styled-div";
-                    }
-                }
-                
-                if (!imgDiv) {
-                    return { 
-                        error: "No image div found",
-                        slideLabel: slideLabel
-                    };
-                }
-                
-                // Extract the URL from the style
+                // Extract URL from style
                 const style = imgDiv.getAttribute('style');
-                
-                // Try multiple patterns to extract the URL
                 let urlMatch = null;
                 let patternUsed = "";
                 
-                // Pattern 1: Standard URL extraction
-                urlMatch = style ? style.match(/url\\(&quot;(.*?)&quot;\\)/) : null;
-                if (urlMatch) patternUsed = "standard-quot";
+                // Try multiple patterns
+                urlMatch = style ? style.match(/url\\("(.*?)"\\)/) : null;
+                if (urlMatch) patternUsed = "double-quotes";
                 
-                // Pattern 2: URL with single quotes
                 if (!urlMatch) {
                     urlMatch = style ? style.match(/url\\('(.*?)'\\)/) : null;
                     if (urlMatch) patternUsed = "single-quotes";
                 }
                 
-                // Pattern 3: URL with double quotes
                 if (!urlMatch) {
-                    urlMatch = style ? style.match(/url\\("(.*?)"\\)/) : null;
-                    if (urlMatch) patternUsed = "double-quotes";
+                    urlMatch = style ? style.match(/url\\(&quot;(.*?)&quot;\\)/) : null;
+                    if (urlMatch) patternUsed = "html-quotes";
                 }
                 
+                if (!urlMatch) {
+                    urlMatch = style ? style.match(/url\\((.*?)\\)/) : null;
+                    if (urlMatch) patternUsed = "no-quotes";
+                }
+                
+                if (!urlMatch) {
+                    return { 
+                        error: "No URL found in style", 
+                        style: style ? style.substring(0, 100) : null 
+                    };
+                }
+                
+                // Get label
+                const imgLabel = imgDiv.getAttribute('aria-label') || ('Profile Photo ' + (slide.getAttribute('aria-label') || '').split(' ')[0]);
+                
+                return {
+                    label: imgLabel,
+                    url: urlMatch[1],
+                    patternUsed: patternUsed
+                };
                 // Pattern 4: URL without quotes
                 if (!urlMatch) {
                     urlMatch = style ? style.match(/url\\((.*?)\\)/) : null;
@@ -692,63 +698,27 @@ async def extract_images(page: Page) -> List[str]:
         
         logger.info(f"Completed image extraction. Found {len(clean_urls)} images with {len(labeled_urls)} labels.")
         
-        # Check if we found enough images - if not, try a fallback approach
-        if len(clean_urls) < 1:
-            logger.warning("DOM-based image extraction failed to find any images, trying HTML regex fallback...")
+        # Check if we found the critical first image - if not, this is a terminal failure
+        profile_photo_1_exists = any(key == "Profile Photo 1" for key in labeled_urls.keys())
+        
+        if not profile_photo_1_exists or len(clean_urls) < 1:
+            logger.error("CRITICAL ERROR: Could not find Profile Photo 1 or no images extracted.")
+            logger.error("No fallback attempted - exiting immediately as requested.")
             
-            # Get page HTML and try direct regex extraction
-            html = await page.content()
+            # Take a debug screenshot
+            debug_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "failed_extraction.png")
+            await page.screenshot(path=debug_path)
+            logger.error(f"Saved debug screenshot to {debug_path}")
             
-            # First look for Profile Photo 1
-            first_photo_pattern = r'aria-label="Profile Photo 1"[^>]*?style="[^"]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^&]+)&'
-            first_match = re.search(first_photo_pattern, html)
-            
-            if first_match:
-                first_url = first_match.group(1)
-                # Clean and replace entities
-                first_url = first_url.replace('&amp;', '&').replace('&quot;', '')
-                
-                if 'https://images-ssl.gotinder.com/' in first_url:
-                    labeled_urls["Profile Photo 1"] = first_url
-                    clean_urls.append(first_url)
-                    logger.info(f"Found first image using fallback regex: {first_url[:60]}...")
-            
-            # Try to find all Tinder image URLs
-            all_urls_pattern = r'https://images-ssl\.gotinder\.com/[^"&\')<>\s]+(?:&[^"&\')<>\s]+)*'
-            all_matches = re.findall(all_urls_pattern, html)
-            
-            # Add all unique ones
-            added_count = 0
-            for i, url in enumerate(all_matches):
-                # Clean URL
-                url = url.replace('&amp;', '&').replace('&quot;', '')
-                
-                # Skip if it's a duplicate or invalid
-                if not url or url in clean_urls or 'https://images-ssl.gotinder.com/' not in url:
-                    continue
-                    
-                # Add to our collections
-                label = f"Fallback Image {i+1}"
-                labeled_urls[label] = url
-                clean_urls.append(url)
-                added_count += 1
-                
-            logger.info(f"Added {added_count} images using fallback regex pattern")
-            
-            # If we still couldn't find any images, this is a terminal failure
-            if len(clean_urls) < 1:
-                logger.error("All image extraction methods failed. Unable to continue.")
-                return []
+            return []
         
         # Store the results in the page object
         page.profile_data["image_urls"] = clean_urls
         page.profile_data["image_urls_backup"] = clean_urls  # For compatibility
         page.profile_data["labeled_image_urls"] = labeled_urls
         
-        # Ensure we have labeled Profile Photo 1
-        if not any(key.startswith("Profile Photo 1") for key in labeled_urls.keys()) and len(clean_urls) > 0:
-            logger.warning("No specific Profile Photo 1 label found, using first image as Profile Photo 1")
-            labeled_urls["Profile Photo 1"] = clean_urls[0]
+        # Don't auto-label as Profile Photo 1 - if it's not properly labeled, we should exit
+        # This was already checked above
         
         # Return the clean URLs
         return clean_urls

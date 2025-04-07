@@ -6,6 +6,7 @@ particularly downloading and saving images and JSON data.
 """
 
 import os
+import sys
 import json
 import asyncio
 import httpx
@@ -172,7 +173,10 @@ async def process_profile_data(profile_data: Dict[str, Any]) -> Dict[str, Any]:
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(profile_data, f, indent=2, ensure_ascii=False)
         
-        return profile_data
+        # Exit the entire process - no fallbacks allowed
+        logger.error("Exiting immediately as Profile Photo 1 is required")
+        sys.exit(1)  # Exit with error code
+        return profile_data  # This won't be reached
     
     # Also check if we have backup image URLs
     backup_urls = profile_data.get("image_urls_backup", [])
