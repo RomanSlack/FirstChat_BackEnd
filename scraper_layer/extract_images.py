@@ -54,29 +54,29 @@ async def download_image(url, save_path, timeout=30, max_retries=3):
 
 def extract_image_urls(html_content):
     """Extract all Tinder image URLs from HTML content."""
-    # Look specifically for image URLs in the second keen-slider__slide elements
-    slider_pattern = r'<div class="keen-slider__slide Wc\(\$transform\) Fxg\(1\)"[^>]*>.*?<\/div>'
-    slides = re.findall(slider_pattern, html_content, re.DOTALL)
+    import html
     
-    # If we found at least 2 slides, focus on the second one
-    target_html = html_content
-    if len(slides) >= 2:
-        target_html = slides[1]
-        
+    # We want to extract all image URLs from all slides
     # This pattern will match URLs from images-ssl.gotinder.com
     pattern = r'https://images-ssl\.gotinder\.com/[^"\')\s\\]+'
     
     # Find all matches in the HTML
-    image_urls = re.findall(pattern, target_html)
+    image_urls = re.findall(pattern, html_content)
     
     # Clean up URLs and remove duplicates
     clean_urls = []
     for url in image_urls:
-        # Clean the URL (remove any trailing characters, quotes, etc.)
+        # Remove any trailing characters, quotes, etc.
         url = url.split('\\')[0].replace('"', '').replace("'", "")
+        
+        # Decode HTML entities like &amp; to &
+        url = html.unescape(url)
+        
+        # Only add if not already in the list
         if url and url not in clean_urls:
             clean_urls.append(url)
     
+    logger.info(f"Found {len(clean_urls)} unique image URLs")
     return clean_urls
 
 async def process_profile_directory(profile_dir):
