@@ -1,0 +1,8 @@
+#!/bin/bash
+# Simple wrapper script to run the Tinder Profile Scraper
+
+# Navigate to the script directory
+cd "$(dirname "$0")"
+
+# Run the scraper
+python main.py "$@"

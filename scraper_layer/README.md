@@ -1,19 +1,21 @@
-# FirstChat Profile Scraper
+# Tinder Profile Scraper
 
-A production-grade Python application that extracts profile data from dating applications, processes the information, and sends it to the FirstChat API for message generation.
+A tool that extracts profile data from ONE Tinder profile, including name, age, interests, and images. The scraper saves all data to an organized folder and then stops without interacting with like/dislike buttons.
 
 ## Features
 
-- **Browser Automation**: Uses Playwright for reliable web scraping
+- **Profile Data Extraction**: Name, age, interests, and other profile details
+- **Image Download**: Saves all carousel images (up to 5)
+- **Non-Intrusive**: Doesn't like or dislike profiles
+- **Smart Navigation**: Implements the specific click sequence required for Tinder
 - **Session Persistence**: Maintains login sessions between runs
-- **Image Processing**: Downloads and converts images to base64 format
-- **Error Handling**: Comprehensive error handling and retry logic
-- **Configuration**: Easily configurable via environment variables or .env file
-- **Logging**: Detailed logging for monitoring and debugging
+- **User-Friendly**: Interactive mode with real-time display
+- **Chrome Profile Support**: Can use an existing Chrome profile for authentication
+- **Organized Output**: Creates a folder named after the profile with all extracted data
 
 ## Installation
 
-1. Clone the repository and navigate to the scraper directory:
+1. Navigate to the scraper directory:
 
 ```bash
 cd /home/roman-slack/FirstChat_BackEnd/scraper_layer
@@ -28,87 +30,87 @@ pip install -r requirements.txt
 3. Install Playwright browsers:
 
 ```bash
-playwright install
+playwright install chromium
 ```
-
-4. Create a configuration file by copying the example:
-
-```bash
-cp .env.example .env
-```
-
-5. Edit the `.env` file to customize your settings.
-
-## Configuration
-
-The scraper is highly configurable through environment variables or the `.env` file. Key configuration options include:
-
-- `TARGET_URL`: The dating app URL to scrape profiles from
-- `API_ENDPOINT`: The FirstChat API endpoint for message generation
-- `USER_BIO`: Your profile bio that will be sent with the API request
-- `HEADLESS`: Whether to run the browser in headless mode
-- `*_SELECTOR`: CSS selectors for extracting profile data
-- `MESSAGE_TONE`, `MESSAGE_SENTENCE_COUNT`, `MESSAGE_CREATIVITY`: Parameters for message generation
-
-See `.env.example` for a complete list of configuration options.
 
 ## Usage
 
-Run the scraper with:
+### Interactive Mode
+
+Simply run the script with no arguments to enter interactive mode:
 
 ```bash
 python main.py
 ```
 
-The scraper will:
-1. Open a browser and navigate to the target dating app
-2. Extract profile information (name, age, bio, images)
-3. Download and convert profile images
-4. Send the processed data to the FirstChat API
-5. Display the generated message and save the result
+The script will prompt you for:
+- Number of profiles to scrape
+- Delay between profiles
+- Headless mode (yes/no)
+- Whether to use an existing Chrome profile
+
+### Command Line Arguments
+
+You can also run the script with command line arguments:
+
+```bash
+python main.py --chrome-profile "/path/to/chrome/profile"
+```
+
+Available options:
+- `--headless`: Run in headless mode (no browser UI)
+- `--chrome-profile`: Path to Chrome profile directory
+
+### Chrome Profile
+
+To use your existing Tinder login, you need to provide the path to your Chrome profile where you're already logged in to Tinder. This is typically found at:
+
+- Windows: `C:\Users\username\AppData\Local\Google\Chrome\User Data\Default`
+- macOS: `/Users/username/Library/Application Support/Google/Chrome/Default`
+- Linux: `/home/username/.config/google-chrome/Default`
 
 ## Output
 
-The scraper will display the generated message in the console and save the complete API response to the `output` directory as a JSON file.
+For each profile, the scraper creates a directory with:
 
-## CSS Selectors
+1. `profile_data.json`: Contains all extracted profile data
+2. `profile.html`: Raw HTML of the profile (if enabled in config)
+3. `image_0.jpg`, `image_1.jpg`, etc.: All downloaded profile images
 
-The `.env.example` file contains default CSS selectors for extracting profile data:
-
+Example output structure:
 ```
-PROFILE_NAME_SELECTOR=.profile-name
-PROFILE_AGE_SELECTOR=.profile-age
-PROFILE_BIO_SELECTOR=.profile-bio
-PROFILE_INTERESTS_SELECTOR=.profile-interests .interest
-PROFILE_IMAGES_SELECTOR=.profile-images img
+scraped_profiles/
+├── Jane_1649213001/
+│   ├── profile_data.json
+│   ├── profile.html
+│   ├── image_0.jpg
+│   ├── image_1.jpg
+│   └── image_2.jpg
+└── John_1649213042/
+    ├── profile_data.json
+    ├── profile.html
+    ├── image_0.jpg
+    └── image_1.jpg
 ```
 
-These selectors must be customized for the specific dating app you're targeting.
+## Configuration
 
-## Error Handling
+The scraper can be configured through environment variables or a `.env` file. Key configuration options:
 
-The scraper implements comprehensive error handling:
+- `TARGET_URL`: The Tinder URL to scrape (default: "https://tinder.com/app/recs")
+- `OUTPUT_DIR`: Directory to save profile data (default: "./scraped_profiles")
+- `HEADLESS`: Whether to run the browser in headless mode
+- `DEVICE_NAME`: Mobile device to emulate (default: "iPhone 14 Pro Max")
+- `SAVE_HTML`: Whether to save raw HTML with profiles
 
-- Connection failures with automatic retries
-- Image processing fallbacks with placeholder images
-- Detailed logging for troubleshooting
-- Graceful exit on critical errors
+## Troubleshooting
 
-## Customization
-
-For different dating apps, you may need to customize:
-
-1. CSS selectors in your `.env` file
-2. Login flow in `browser.py` if authentication is required
-3. Image processing parameters in `data_processor.py`
+- **Login Required**: Use the `--chrome-profile` option with your existing Chrome profile
+- **Selectors Not Working**: Tinder may have updated their UI; check the latest HTML reference
+- **Images Not Downloading**: Check network connectivity and URL formats
+- **Browser Not Starting**: Ensure Playwright is installed correctly
+- **Navigation Issues**: Try adjusting the delay between actions in config
 
 ## License
 
 Proprietary - All rights reserved.
-
-## Troubleshooting
-
-- **Browser doesn't start**: Ensure Playwright is installed: `playwright install`
-- **Can't find elements**: Adjust CSS selectors in your `.env` file
-- **API connection fails**: Verify the API server is running at the configured endpoint
-- **Authentication issues**: Check if the dating app requires login and modify accordingly

@@ -1,37 +1,34 @@
 """
-Configuration module for FirstChat Profile Scraper.
+Configuration module for Tinder Profile Scraper.
 
 This module handles the loading and validation of configuration parameters
 from environment variables with smart defaults.
 """
 
 import os
-from pydantic import field_validator, model_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
-from typing import Optional, List
+from typing import Optional
 from dotenv import load_dotenv
+import pathlib
 
 # Load environment variables from .env file
 load_dotenv()
 
-class ScraperConfig(BaseSettings):
-    """Configuration settings for the profile scraper."""
+class TinderConfig(BaseSettings):
+    """Configuration settings for the Tinder profile scraper."""
     
-    # Target dating app URL
-    TARGET_URL: str = os.getenv("TARGET_URL", "http://localhost:3000")
+    # Tinder URL
+    TARGET_URL: str = os.getenv("TARGET_URL", "https://tinder.com/app/recs")
     
-    # API endpoint for message generation
-    API_ENDPOINT: str = os.getenv("API_ENDPOINT", "http://localhost:8002/generate_message")
-    
-    # User profile information (the person running the script)
-    USER_BIO: str = os.getenv("USER_BIO", "I'm a 28-year-old software engineer who loves hiking, photography, and trying new restaurants. I travel whenever I can and am looking for someone with similar interests.")
-    
-    # Number of images to process
-    IMAGE_COUNT: int = int(os.getenv("IMAGE_COUNT", "2"))
+    # Output directory for scraped profiles
+    OUTPUT_DIR: str = os.getenv("OUTPUT_DIR", "./scraped_profiles")
     
     # Browser settings
-    HEADLESS: bool = os.getenv("HEADLESS", "True").lower() == "true"
-    USER_AGENT: str = os.getenv("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+    HEADLESS: bool = os.getenv("HEADLESS", "False").lower() == "true"
+    USER_AGENT: str = os.getenv("USER_AGENT", "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1")
+    DEVICE_NAME: str = os.getenv("DEVICE_NAME", "iPhone 14 Pro Max")
+    CHROME_PROFILE_PATH: Optional[str] = os.getenv("CHROME_PROFILE_PATH", None)
     
     # Timeout values (in milliseconds)
     PAGE_LOAD_TIMEOUT: int = int(os.getenv("PAGE_LOAD_TIMEOUT", "30000"))
@@ -41,48 +38,36 @@ class ScraperConfig(BaseSettings):
     # Session persistence
     SESSION_STORAGE_DIR: str = os.getenv("SESSION_STORAGE_DIR", "./browser_sessions")
     
-    # Profile selectors (these would be specific to the dating app being scraped)
-    PROFILE_NAME_SELECTOR: str = os.getenv("PROFILE_NAME_SELECTOR", ".profile-name")
-    PROFILE_AGE_SELECTOR: str = os.getenv("PROFILE_AGE_SELECTOR", ".profile-age")
-    PROFILE_BIO_SELECTOR: str = os.getenv("PROFILE_BIO_SELECTOR", ".profile-bio")
-    PROFILE_INTERESTS_SELECTOR: str = os.getenv("PROFILE_INTERESTS_SELECTOR", ".profile-interests .interest")
-    PROFILE_IMAGES_SELECTOR: str = os.getenv("PROFILE_IMAGES_SELECTOR", ".profile-images img")
+    # Tinder specific selectors
+    CAROUSEL_ITEM_SELECTOR: str = 'id=carousel-item-{}'
+    PROFILE_NAME_AGE_SELECTOR: str = 'h1[class*="Typs(display-2-strong)"]'
+    SHOW_MORE_SELECTOR: str = 'div[class*="Bdrs(30px)"] span:text("Show more")'
+    VIEW_ALL_SELECTOR: str = 'div[class*="Px(16px)"]:text("View all 5")'
+    INTERESTS_SELECTOR: str = 'div[class*="Gp(8px)"] div[class*="Bdrs(30px)"] span'
+    PROFILE_SECTION_SELECTOR: str = 'div[class*="Mt(8px)"] div[class*="P(24px)"]'
     
-    # API request settings
-    MESSAGE_SENTENCE_COUNT: int = int(os.getenv("MESSAGE_SENTENCE_COUNT", "2"))
-    MESSAGE_TONE: str = os.getenv("MESSAGE_TONE", "friendly")
-    MESSAGE_CREATIVITY: float = float(os.getenv("MESSAGE_CREATIVITY", "0.7"))
-    
-    # Network settings
-    MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
-    RETRY_DELAY: int = int(os.getenv("RETRY_DELAY", "1000"))  # in milliseconds
+    # Wait times (in milliseconds)
+    WAIT_BETWEEN_ACTIONS: int = int(os.getenv("WAIT_BETWEEN_ACTIONS", "500"))
     
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE: Optional[str] = os.getenv("LOG_FILE", "scraper.log")
     
-    @field_validator("MESSAGE_TONE")
-    def validate_tone(cls, v):
-        """Validate that the message tone is from the allowed list."""
-        allowed_tones = ["friendly", "witty", "flirty", "casual", "confident"]
-        if v.lower() not in allowed_tones:
-            raise ValueError(f"Message tone must be one of: {', '.join(allowed_tones)}")
-        return v.lower()
+    # Save raw HTML with profiles
+    SAVE_HTML: bool = os.getenv("SAVE_HTML", "True").lower() == "true"
     
-    @field_validator("MESSAGE_CREATIVITY")
-    def validate_creativity(cls, v):
-        """Validate that creativity is within the allowed range."""
-        if not 0.0 <= v <= 1.0:
-            raise ValueError("Creativity must be between 0.0 and 1.0")
+    @field_validator("OUTPUT_DIR")
+    def create_output_dir(cls, v):
+        """Create output directory if it doesn't exist."""
+        path = pathlib.Path(v)
+        path.mkdir(parents=True, exist_ok=True)
         return v
     
-    @field_validator("IMAGE_COUNT")
-    def validate_image_count(cls, v):
-        """Validate that image count is reasonable."""
-        if v < 1:
-            raise ValueError("Must process at least 1 image")
-        if v > 10:
-            raise ValueError("Cannot process more than 10 images")
+    @field_validator("SESSION_STORAGE_DIR")
+    def create_session_dir(cls, v):
+        """Create session storage directory if it doesn't exist."""
+        path = pathlib.Path(v)
+        path.mkdir(parents=True, exist_ok=True)
         return v
     
     class Config:
@@ -91,4 +76,4 @@ class ScraperConfig(BaseSettings):
         case_sensitive = True
 
 # Create a global config instance
-config = ScraperConfig()
+config = TinderConfig()

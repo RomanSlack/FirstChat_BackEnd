@@ -1,148 +1,124 @@
 """
-Data processing module for FirstChat Profile Scraper.
+Data processing module for Tinder Profile Scraper.
 
 This module handles the processing of extracted profile data,
-particularly image downloading and conversion to base64.
+particularly downloading and saving images and JSON data.
 """
 
-import base64
-import io
-from typing import List, Dict, Any, Optional, Tuple
+import os
+import json
 import asyncio
 import httpx
-from PIL import Image
+from pathlib import Path
+from typing import List, Dict, Any, Optional
 from loguru import logger
+import re
+import time
 
 from config import config
 
 
-async def download_image(url: str, timeout: int = 30) -> Optional[bytes]:
+async def download_image(url: str, save_path: str, timeout: int = 30) -> bool:
     """
-    Download image from URL asynchronously.
+    Download image from URL asynchronously and save to specified path.
     
     Args:
         url: Image URL to download
+        save_path: Path to save the image to
         timeout: Timeout in seconds
         
     Returns:
-        Image bytes or None if download failed
+        True if download succeeded, False otherwise
     """
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(url, timeout=timeout, follow_redirects=True)
             response.raise_for_status()
-            return response.content
-    except Exception as e:
-        logger.error(f"Failed to download image from {url}: {str(e)}")
-        return None
-
-
-async def image_to_base64(image_bytes: bytes, format: str = "JPEG") -> str:
-    """
-    Convert image bytes to base64 string with data URL format.
-    
-    Args:
-        image_bytes: Raw image bytes
-        format: Output image format (JPEG, PNG, etc.)
-        
-    Returns:
-        Base64 encoded image with data URL prefix
-    """
-    try:
-        # Open the image and convert to desired format
-        image = Image.open(io.BytesIO(image_bytes))
-        
-        # Resize if too large (optional)
-        max_dimension = 1200  # Reasonable size for API
-        if max(image.size) > max_dimension:
-            # Maintain aspect ratio
-            if image.width > image.height:
-                new_width = max_dimension
-                new_height = int(max_dimension * image.height / image.width)
-            else:
-                new_height = max_dimension
-                new_width = int(max_dimension * image.width / image.height)
             
-            image = image.resize((new_width, new_height), Image.LANCZOS)
-        
-        # Convert image to bytes in specified format
-        buffer = io.BytesIO()
-        image.save(buffer, format=format)
-        image_bytes = buffer.getvalue()
-        
-        # Convert to base64 and add data URL prefix
-        encoded = base64.b64encode(image_bytes).decode('utf-8')
-        mime_type = f"image/{format.lower()}"
-        data_url = f"data:{mime_type};base64,{encoded}"
-        
-        return data_url
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            
+            # Save the image to file
+            with open(save_path, 'wb') as f:
+                f.write(response.content)
+                
+            logger.info(f"Downloaded image to {save_path}")
+            return True
+            
     except Exception as e:
-        logger.error(f"Failed to convert image to base64: {str(e)}")
-        # Return placeholder image if conversion fails
-        return get_placeholder_image()
-
-
-def get_placeholder_image() -> str:
-    """
-    Return a placeholder image as base64 for when image processing fails.
-    
-    Returns:
-        Base64 encoded placeholder image
-    """
-    # 1x1 transparent pixel
-    return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        logger.error(f"Failed to download image from {url} to {save_path}: {str(e)}")
+        return False
 
 
 async def process_profile_data(profile_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Process raw profile data into the format needed for the API.
+    Process and save profile data to disk.
     
     Args:
         profile_data: Raw profile data extracted from browser
         
     Returns:
-        Processed profile data ready for API
+        Processed profile data with local file paths
     """
-    processed_data = {
-        "match_bio": {
-            "name": profile_data.get("name", "Unknown"),
-            "bio": profile_data.get("bio", ""),
-            "interests": profile_data.get("interests", [])
-        }
-    }
+    if not profile_data.get("name"):
+        logger.error("Profile data is missing a name, cannot process")
+        return profile_data
     
-    # Add age if available
-    if "age" in profile_data and profile_data["age"]:
-        processed_data["match_bio"]["age"] = profile_data["age"]
+    # Clean the name to use as directory name (remove special chars)
+    name = profile_data["name"]
+    safe_name = re.sub(r'[\\/*?:"<>|]', "", name)
+    timestamp = int(time.time())
+    folder_name = f"{safe_name}_{timestamp}"
     
-    # Process images
+    # Create profile directory
+    profile_dir = os.path.join(config.OUTPUT_DIR, folder_name)
+    os.makedirs(profile_dir, exist_ok=True)
+    
+    # Add local paths to profile data
+    processed_data = profile_data.copy()
+    processed_data["folder_path"] = profile_dir
+    
+    # Process and download images
     image_urls = profile_data.get("image_urls", [])
-    base64_images = []
+    image_local_paths = []
     
     # Download images concurrently
-    download_tasks = [download_image(url) for url in image_urls[:config.IMAGE_COUNT]]
-    image_bytes_list = await asyncio.gather(*download_tasks)
+    download_tasks = []
+    for i, url in enumerate(image_urls):
+        ext = url.split('?')[0].split('.')[-1] if '.' in url else 'jpg'
+        if ext not in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
+            ext = 'jpg'  # Default to jpg if extension seems invalid
+            
+        image_filename = f"image_{i}.{ext}"
+        image_path = os.path.join(profile_dir, image_filename)
+        image_local_paths.append(image_path)
+        
+        download_tasks.append(download_image(url, image_path))
     
-    # Process images to base64
-    for img_bytes in image_bytes_list:
-        if img_bytes:
-            base64_image = await image_to_base64(img_bytes)
-            base64_images.append(base64_image)
+    # Wait for all image downloads to complete
+    download_results = await asyncio.gather(*download_tasks)
     
-    # Ensure we have at least config.IMAGE_COUNT images (use placeholders if needed)
-    while len(base64_images) < config.IMAGE_COUNT:
-        logger.warning(f"Adding placeholder image. Only had {len(base64_images)} valid images")
-        base64_images.append(get_placeholder_image())
+    # Update the processing results
+    processed_data["image_local_paths"] = image_local_paths
+    processed_data["download_success_count"] = sum(1 for result in download_results if result)
     
-    # Add the first two images to the processed data
-    processed_data["image1"] = base64_images[0]
-    if len(base64_images) > 1:
-        processed_data["image2"] = base64_images[1]
+    # Save profile data to JSON
+    json_path = os.path.join(profile_dir, "profile_data.json")
     
-    # Add user bio and message generation parameters
-    processed_data["user_bio"] = config.USER_BIO
-    processed_data["sentence_count"] = config.MESSAGE_SENTENCE_COUNT
-    processed_data["tone"] = config.MESSAGE_TONE
-    processed_data["creativity"] = config.MESSAGE_CREATIVITY
+    # Create a clean version of the data for JSON (removing HTML)
+    json_data = processed_data.copy()
+    if "html" in json_data:
+        # Save HTML to a separate file
+        html_path = os.path.join(profile_dir, "profile.html")
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(json_data["html"])
+        json_data.pop("html")
+    
+    # Save the JSON
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"Saved profile data to {json_path}")
+    logger.info(f"Downloaded {processed_data['download_success_count']} of {len(image_urls)} images")
     
     return processed_data
