@@ -127,8 +127,9 @@ async def interact_with_profile(page: Page) -> bool:
 
     Instead of searching slide-by-slide for the "Show more" button, this version
     clicks at the bottom-center of the screen (about 20% up from the bottom) which
-    performs the same function. After that, it checks for a "View all" button and clicks
-    it if present.
+    performs the same function. After that, it robustly checks for a "View all" button
+    (by looking for a div with role="button" that contains the text "View all") and clicks
+    it if available.
 
     Args:
         page: Playwright page object
@@ -146,16 +147,16 @@ async def interact_with_profile(page: Page) -> bool:
         x = int(screen_width / 2)
         y = int(screen_height * 0.8)
 
-        # Click on the bottom-middle of the screen to pull up the details.
-        logger.info("Clicking on bottom-middle of screen to open profile details...")
+        # Click on the bottom-center of the screen to pull up the profile details.
+        logger.info("Clicking on bottom-center of screen to open profile details...")
         await page.mouse.click(x, y)
         await asyncio.sleep(1.0)
 
-        # Check if a "View all" button is present; click it if found.
-        logger.info("Checking for 'View all' button on details page...")
-        let_view_all = await page.query_selector(config.VIEW_ALL_SELECTOR)
-        if let_view_all:
-            await let_view_all.click()
+        # Robustly check for the "View all" button.
+        logger.info("Looking for 'View all' button on details page...")
+        view_all_button = await page.query_selector('div[role="button"]:has-text("View all")')
+        if view_all_button:
+            await view_all_button.click()
             logger.info("Clicked 'View all' button.")
             await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
         else:
