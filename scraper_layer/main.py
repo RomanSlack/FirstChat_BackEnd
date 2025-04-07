@@ -13,6 +13,7 @@ import asyncio
 import sys
 import os
 import time
+import re
 from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -89,13 +90,82 @@ async def run_tinder_scraper(profile_count: int = 1, capture_delay: float = 0.5)
                 for i in range(profile_count):
                     logger.info(f"Processing profile {i+1}/{profile_count}")
                     
+                    # First, check for Profile Photo 1 BEFORE any interactions
+                    html = await page.content()
+                    
+                    # Use exact pattern from the reference file, but capture the FULL URL
+                    # This pattern captures everything between url(&quot; and &quot;) to get the complete URL with signature
+                    profile_photo_pattern = r'aria-label="Profile Photo 1"[^>]*?url\(&quot;(https://images-ssl\.gotinder\.com/[^&"]+(?:&amp;[^&"]+)*)&quot;\)'
+                    
+                    # Alternative patterns if the exact one fails
+                    alt_patterns = [
+                        # Try to get the complete URL including signature
+                        r'Profile Photo 1"[^>]*?url\(&quot;(https://images-ssl\.gotinder\.com/[^"]+)&quot;',
+                        
+                        # Another version capturing the full URL
+                        r'aria-label="Profile Photo 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^)]+)',
+                        
+                        # Even more aggressive pattern
+                        r'Profile Photo 1.*?url\(&quot;(https://images-ssl\.gotinder\.com/[^)]+)',
+                        
+                        # Last resort - just try to find any URL after Profile Photo 1
+                        r'Profile Photo 1.*?(https://images-ssl\.gotinder\.com/[^"\'<>\s]+)',
+                    ]
+                    
+                    # Try the exact pattern first
+                    match = re.search(profile_photo_pattern, html)
+                    
+                    # If not found, try alternatives
+                    if not match:
+                        for pattern in alt_patterns:
+                            match = re.search(pattern, html)
+                            if match:
+                                break
+                    
+                    # If STILL not found, stop everything
+                    if not match:
+                        logger.error("CRITICAL ERROR: Profile Photo 1 not found on initial check. Stopping immediately.")
+                        # Save HTML for debugging
+                        debug_path = os.path.join(config.OUTPUT_DIR, "debug_html_main.txt")
+                        with open(debug_path, 'w', encoding='utf-8') as f:
+                            f.write(html[:10000])  # First 10K chars to avoid huge files
+                        logger.error(f"Saved debug HTML to {debug_path}")
+                        return
+                    
+                    # If we found it, store the URL for later use
+                    first_photo_url = match.group(1)
+                    
+                    # Clean up HTML entities in the URL
+                    first_photo_url = first_photo_url.replace('&amp;', '&')
+                    first_photo_url = first_photo_url.replace('&quot;', '')
+                    first_photo_url = first_photo_url.replace('&quot', '')
+                    
+                    # Check if the URL has a signature
+                    if "Signature=" not in first_photo_url:
+                        logger.warning("Profile Photo 1 URL doesn't contain a signature. This might cause issues.")
+                        
+                    logger.info(f"FOUND PROFILE PHOTO 1: {first_photo_url[:60]}...")
+                    
                     # Interact with the profile (click sequence)
                     if not await interact_with_profile(page):
                         logger.error("Failed to interact with profile. Stopping.")
                         return
                     
-                    # Extract profile data
+                    # Extract profile data and manually inject the first photo URL
                     profile_data = await extract_profile_data(page)
+                    
+                    # Make sure the Profile Photo 1 URL is in the data
+                    if not profile_data.get("image_urls"):
+                        profile_data["image_urls"] = []
+                        
+                    if first_photo_url not in profile_data["image_urls"]:
+                        profile_data["image_urls"].insert(0, first_photo_url)
+                        
+                    # Add labeled image URLs if not present
+                    if not profile_data.get("labeled_image_urls"):
+                        profile_data["labeled_image_urls"] = {}
+                        
+                    profile_data["labeled_image_urls"]["Profile Photo 1"] = first_photo_url
                     
                     # Check if we have the minimum required data
                     if not profile_data.get("name"):
@@ -124,6 +194,15 @@ async def run_tinder_scraper(profile_count: int = 1, capture_delay: float = 0.5)
                     print("=" * 50 + "\n")
                     
                     profile_counter += 1
+                    
+                    # Remove screenshot files if they exist
+                    screenshot_path = os.path.join(config.OUTPUT_DIR, "tinder_screenshot.png")
+                    if os.path.exists(screenshot_path):
+                        try:
+                            os.remove(screenshot_path)
+                            logger.info(f"Removed screenshot file: {screenshot_path}")
+                        except Exception as e:
+                            logger.error(f"Error removing screenshot: {str(e)}")
                     
                     # Just stop here after extracting data from one profile
                     # No clicking on Pass or moving to next profile

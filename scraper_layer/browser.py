@@ -115,12 +115,13 @@ async def save_session(context: BrowserContext) -> None:
 async def navigate_to_tinder(page: Page) -> bool:
     """
     Navigate to Tinder recommendations page.
+    Immediately checks for Profile Photo 1 and exits if not found.
     
     Args:
         page: Playwright page object
         
     Returns:
-        bool: True if navigation was successful, False otherwise
+        bool: True if navigation and Profile Photo 1 check were successful, False otherwise
     """
     try:
         # Check if we're already on Tinder
@@ -148,10 +149,8 @@ async def navigate_to_tinder(page: Page) -> bool:
             logger.warning("Login required - please use a Chrome profile that's already logged in to Tinder")
             return False
         
-        # Take a screenshot for debugging (optional)
-        screenshot_path = os.path.join(config.OUTPUT_DIR, "tinder_screenshot.png")
-        await page.screenshot(path=screenshot_path)
-        logger.info(f"Saved screenshot to {screenshot_path}")
+        # We no longer check for Profile Photo 1 here - it's now done in main.py
+        # This prevents duplicate checks and ensures it happens at exactly the right time
         
         logger.info("Successfully connected to Tinder")
         return True

@@ -65,28 +65,48 @@ def extract_image_urls(html_content):
     labeled_urls = {}
     clean_urls = []
     
-    # First, try to get the FULL URL with signature for "Profile Photo 1" - very aggressive match
-    # This pattern looks for complete URLs with signature in divs with aria-label="Profile Photo 1"
+    # Use the exact pattern from the reference HTML file for Profile Photo 1
+    # This is based on the provided reference in /home/roman-slack/FirstChat_BackEnd/scraper_layer/refs/fix.txt
+    first_image_pattern = r'aria-label="Profile Photo 1" style="background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]+)&amp;'
     
-    # First try a super-aggressive pattern that captures all content between url( and )
-    first_image_pattern = r'aria-label="Profile Photo 1"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^)]+)\)'
+    # Try more patterns with different variations if the exact one doesn't match
+    alt_patterns = [
+        # More specific pattern based on the reference
+        r'aria-label="Profile Photo 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^"&]+)&amp;',
+        
+        # Super aggressive pattern - captures everything between url( and )
+        r'aria-label="Profile Photo 1"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^)]+)\)',
+        
+        # More restrictive pattern
+        r'aria-label="Profile Photo 1"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^"\\]+)(?:&quot;|\\"|")',
+        
+        # Profile Image 1 fallback
+        r'aria-label="Profile Image 1"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^"\\]+)(?:&quot;|\\"|")',
+        
+        # Very loose pattern to catch anything
+        r'Profile Photo 1.*?url\(&quot;(https://images-ssl\.gotinder\.com/[^&]+)',
+    ]
     
-    # Also try more restrictive pattern as fallback
-    alt_first_image_pattern = r'aria-label="Profile Photo 1"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^"\\]+)(?:&quot;|\\"|")'
-    
-    # And another fallback for "Profile Image 1"
-    alt_image_pattern = r'aria-label="Profile Image 1"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^"\\]+)(?:&quot;|\\"|")'
-    
-    # Try the first pattern
+    # Try the exact pattern first
     first_image_match = re.search(first_image_pattern, html_content)
     
-    # If not found, try the first alternate pattern
+    # If not found, try all alternative patterns
     if not first_image_match:
-        first_image_match = re.search(alt_first_image_pattern, html_content)
-        
-    # If still not found, try the second alternate pattern
+        for pattern in alt_patterns:
+            first_image_match = re.search(pattern, html_content)
+            if first_image_match:
+                logger.info("Found Profile Photo 1 using alternate pattern")
+                break
+                
+    # If still not found after trying all patterns, log the error
     if not first_image_match:
-        first_image_match = re.search(alt_image_pattern, html_content)
+        logger.error("CRITICAL ERROR: Could not find Profile Photo 1 in HTML despite trying multiple patterns")
+        # Save a sample of HTML for debugging
+        debug_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "debug_html.txt")
+        with open(debug_path, 'w', encoding='utf-8') as f:
+            # Save the first 10000 chars of HTML to avoid huge files
+            f.write(html_content[:10000])
+        logger.error(f"Saved first part of HTML to {debug_path} for debugging")
     
     # If we found the first image, add it first
     if first_image_match:
