@@ -162,7 +162,8 @@ async def navigate_to_tinder(page: Page) -> bool:
 
 async def interact_with_profile(page: Page) -> bool:
     """
-    Interact with a Tinder profile using the required sequence.
+    Interact with a Tinder profile to expand details.
+    Image navigation is now handled separately in extract_images function.
     
     Args:
         page: Playwright page object
@@ -177,33 +178,9 @@ async def interact_with_profile(page: Page) -> bool:
         # Initialize profile_data if needed
         if not hasattr(page, "profile_data"):
             page.profile_data = {}
-            
-        if "screenshot_paths" not in page.profile_data:
-            page.profile_data["screenshot_paths"] = []
         
-        # Navigate to the third image using right taps
-        # This navigates through images without swiping profiles
-        
-        # Tap right side of image to go to next image
-        screen_width = await page.evaluate("window.innerWidth")
-        screen_height = await page.evaluate("window.innerHeight")
-        
-        # Tap right side of image (80% of width, 30% of height) to navigate images
-        # We tap twice to reach approximately the 3rd image
-        x_position = int(screen_width * 0.8)
-        y_position = int(screen_height * 0.3)
-        
-        logger.info(f"Navigating to 3rd image... (clicking at {x_position}, {y_position})")
-        
-        # First tap to 2nd image
-        await page.mouse.click(x_position, y_position)
-        await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
-        
-        # Second tap to 3rd image
-        await page.mouse.click(x_position, y_position)
-        await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
-        
-        # No screenshots needed
+        # We're now assuming we're already positioned at the right image
+        # from the extract_images function, so skip navigation
         
         # Click "Show more" button
         try:
@@ -233,21 +210,19 @@ async def interact_with_profile(page: Page) -> bool:
         except Exception as e:
             logger.warning(f"Could not find or click 'Show more' button: {str(e)}")
         
-        # No screenshots needed
-        
         # Click "View all 5" button if available
         try:
-            logger.info("Looking for 'View all 5' button...")
+            logger.info("Looking for 'View all' button...")
             
             # Try the configured selector
             view_all_button = await page.query_selector(config.VIEW_ALL_SELECTOR)
             if view_all_button:
                 await view_all_button.click()
-                logger.info("Clicked 'View all 5' button")
+                logger.info("Clicked 'View all' button")
                 await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
             else:
                 # Try alternative selector
-                logger.info("Trying alternative selector for 'View all 5' button...")
+                logger.info("Trying alternative selector for 'View all' button...")
                 alt_buttons = await page.query_selector_all('div:has-text("View all")')
                 if alt_buttons:
                     for button in alt_buttons:
@@ -261,12 +236,10 @@ async def interact_with_profile(page: Page) -> bool:
                 else:
                     logger.warning("Could not find any 'View all' button")
         except Exception as e:
-            logger.warning(f"Could not find or click 'View all 5' button: {str(e)}")
+            logger.warning(f"Could not find or click 'View all' button: {str(e)}")
         
         # Allow everything to load
         await asyncio.sleep(1)
-        
-        # No screenshots needed
         
         return True
         
@@ -331,7 +304,7 @@ async def extract_name_and_age(page: Page) -> Tuple[Optional[str], Optional[int]
 
 async def extract_images(page: Page) -> List[str]:
     """
-    Extract image URLs from Tinder carousel.
+    Extract image URLs from Tinder carousel using DOM navigation.
     
     Args:
         page: Playwright page object
@@ -340,35 +313,180 @@ async def extract_images(page: Page) -> List[str]:
         List of image URLs
     """
     try:
-        # Get the HTML as the very first step to ensure we capture the page as is
-        logger.info("Extracting Tinder image URLs from HTML...")
-        html = await page.content()
+        logger.info("Starting enhanced image extraction using DOM navigation...")
         
         # Initialize profile_data if needed
         if not hasattr(page, "profile_data"):
             page.profile_data = {}
+            
+        # Initialize collections for URLs
+        labeled_urls = {}
+        clean_urls = []
         
-        # Import extract_image_urls function from extract_images module
-        from extract_images import extract_image_urls
+        # Step 1: Find the keen-slider container with the images
+        logger.info("Locating the image carousel container...")
         
-        # Use the enhanced image extraction function that handles labeled images
-        clean_urls, labeled_urls = extract_image_urls(html)
+        # Look for the container with aria-live="polite" and keen-slider class
+        carousel_container = await page.evaluate('''() => {
+            // Find keen-slider container
+            const container = document.querySelector('.keen-slider[aria-live="polite"]');
+            if (!container) return null;
+            
+            // Get total number of images from the first slide
+            const firstSlide = container.querySelector('.keen-slider__slide[aria-hidden="false"]');
+            if (!firstSlide) return null;
+            
+            const ariaLabel = firstSlide.getAttribute('aria-label');
+            const totalImagesMatch = ariaLabel ? ariaLabel.match(/(\d+)$/) : null;
+            const totalImages = totalImagesMatch ? parseInt(totalImagesMatch[1]) : 0;
+            
+            return {
+                found: true,
+                totalImages: totalImages
+            };
+        }''')
         
-        # If we didn't find Profile Photo 1, log an error and return empty list
-        if not clean_urls or not labeled_urls:
-            logger.error("CRITICAL ERROR: Could not find Profile Photo 1. Stopping the scraping process.")
+        if not carousel_container or not carousel_container.get('found'):
+            logger.error("Failed to locate image carousel container")
             return []
-        
-        logger.info(f"Found {len(clean_urls)} unique Tinder image URLs")
-        logger.info(f"Found {len(labeled_urls)} labeled Tinder image URLs")
-        
-        # Store both the clean URLs and labeled URLs in the page object
-        if clean_urls:
-            page.profile_data["image_urls_backup"] = clean_urls
             
-        # Store the labeled URLs in the page object
+        total_images = carousel_container.get('totalImages', 0)
+        logger.info(f"Found image carousel with {total_images} total images")
+        
+        if total_images < 1:
+            logger.error("No images found in carousel")
+            return []
+            
+        # Step 2: Extract the first image
+        logger.info("Extracting the first image URL...")
+        first_image_data = await page.evaluate('''() => {
+            // Find the currently visible slide
+            const slide = document.querySelector('.keen-slider__slide[aria-hidden="false"]');
+            if (!slide) return null;
+            
+            // Get the aria-label for numbering
+            const slideLabel = slide.getAttribute('aria-label');
+            
+            // Find the nested div with the background image
+            const imgDiv = slide.querySelector('div[style*="background-image"]');
+            if (!imgDiv) return null;
+            
+            // Extract the URL from the style
+            const style = imgDiv.getAttribute('style');
+            const urlMatch = style ? style.match(/url\\(&quot;(.*?)&quot;\\)/) : null;
+            if (!urlMatch) return null;
+            
+            // Get the label for this image
+            const imgLabel = imgDiv.getAttribute('aria-label') || ('Profile Image ' + slideLabel.split(' ')[0]);
+            
+            return {
+                label: imgLabel,
+                url: urlMatch[1]
+            };
+        }''')
+        
+        if not first_image_data:
+            logger.error("Failed to extract the first image URL")
+            return []
+            
+        # Clean and add the first image URL
+        first_url = first_image_data.get('url', '')
+        first_label = first_image_data.get('label', 'Profile Photo 1')
+        
+        # Clean up the URL entities
+        first_url = first_url.replace('&amp;', '&')
+        
+        if first_url and 'https://images-ssl.gotinder.com/' in first_url:
+            labeled_urls[first_label] = first_url
+            clean_urls.append(first_url)
+            logger.info(f"Successfully extracted {first_label}: {first_url[:60]}...")
+        else:
+            logger.error(f"Failed to extract valid URL for {first_label}")
+            return []
+            
+        # Step 3: Tap through and extract each image
+        logger.info(f"Extracting remaining {total_images - 1} images...")
+        
+        # Calculate tap positions - right side for forward, left side for backward
+        screen_width = await page.evaluate("window.innerWidth")
+        screen_height = await page.evaluate("window.innerHeight")
+        
+        right_tap_x = int(screen_width * 0.8)  # 80% from left
+        left_tap_x = int(screen_width * 0.2)   # 20% from left
+        tap_y = int(screen_height * 0.3)       # 30% from top
+        
+        # Loop through each remaining image
+        for i in range(2, total_images + 1):
+            # Tap right to advance to the next image
+            await page.mouse.click(right_tap_x, tap_y)
+            
+            # Wait for the slide transition
+            await asyncio.sleep(0.3)
+            
+            # Extract the current image
+            image_data = await page.evaluate('''() => {
+                // Find the currently visible slide
+                const slide = document.querySelector('.keen-slider__slide[aria-hidden="false"]');
+                if (!slide) return null;
+                
+                // Get the aria-label for numbering
+                const slideLabel = slide.getAttribute('aria-label');
+                
+                // Find the nested div with the background image
+                const imgDiv = slide.querySelector('div[style*="background-image"]');
+                if (!imgDiv) return null;
+                
+                // Extract the URL from the style
+                const style = imgDiv.getAttribute('style');
+                const urlMatch = style ? style.match(/url\\(&quot;(.*?)&quot;\\)/) : null;
+                if (!urlMatch) return null;
+                
+                // Get the label for this image
+                const imgLabel = imgDiv.getAttribute('aria-label') || ('Profile Image ' + slideLabel.split(' ')[0]);
+                
+                return {
+                    label: imgLabel,
+                    url: urlMatch[1]
+                };
+            }''')
+            
+            if not image_data:
+                logger.warning(f"Failed to extract image #{i}")
+                continue
+                
+            # Clean and add the image URL
+            img_url = image_data.get('url', '')
+            img_label = image_data.get('label', f'Profile Photo {i}')
+            
+            # Clean up the URL entities
+            img_url = img_url.replace('&amp;', '&')
+            
+            if img_url and 'https://images-ssl.gotinder.com/' in img_url and img_url not in clean_urls:
+                labeled_urls[img_label] = img_url
+                clean_urls.append(img_url)
+                logger.info(f"Successfully extracted {img_label}: {img_url[:60]}...")
+        
+        # Step 4: Return to the 3rd image (or the last image if there are fewer than 3)
+        target_image = min(3, total_images)
+        current_image = total_images
+        
+        # Calculate how many left taps needed to go from last image to 3rd
+        left_taps_needed = current_image - target_image
+        
+        logger.info(f"Navigating back to image #{target_image} from image #{current_image}...")
+        
+        # Tap left as needed
+        for _ in range(left_taps_needed):
+            await page.mouse.click(left_tap_x, tap_y)
+            await asyncio.sleep(0.3)
+        
+        logger.info(f"Completed image extraction. Found {len(clean_urls)} images with {len(labeled_urls)} labels.")
+        
+        # Store the results in the page object
+        page.profile_data["image_urls"] = clean_urls
+        page.profile_data["image_urls_backup"] = clean_urls  # For compatibility
         page.profile_data["labeled_image_urls"] = labeled_urls
-            
+        
         # Return the clean URLs
         return clean_urls
         

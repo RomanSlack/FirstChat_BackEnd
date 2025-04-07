@@ -213,6 +213,17 @@ async def process_profile_data(profile_data: Dict[str, Any]) -> Dict[str, Any]:
         # Create a safe filename from the label
         safe_label = label.replace(" ", "_").lower()
         
+        # Check if this is a valid URL
+        if not url or 'https://images-ssl.gotinder.com/' not in url:
+            logger.warning(f"Skipping invalid URL for {label}: {url}")
+            continue
+            
+        # Additional debugging for Profile Photo 1
+        if label == "Profile Photo 1":
+            logger.info(f"Processing Profile Photo 1 URL: {url[:100]}...")
+            if "Signature=" not in url:
+                logger.warning("Profile Photo 1 URL doesn't contain a signature!")
+        
         # Detect image format from URL (or default to jpg)
         if "webp" in url.lower():
             ext = "webp"
