@@ -61,13 +61,15 @@ def extract_image_urls(html_content):
     """Extract all Tinder image URLs from HTML content."""
     import html
     
+    # Dictionary to store labeled image URLs
+    labeled_urls = {}
+    clean_urls = []
+    
     # First, look specifically for "Profile Photo 1" which is the main profile image
     first_image_pattern = r'aria-label="Profile Photo 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
     
     # Also try alternate pattern "Profile Image 1" as a fallback
     alt_first_image_pattern = r'aria-label="Profile Image 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
-    
-    clean_urls = []
     
     # Try the first pattern
     first_image_match = re.search(first_image_pattern, html_content)
@@ -90,10 +92,40 @@ def extract_image_urls(html_content):
             
         # Make sure first URL is properly formatted with https://
         if first_url and 'https://images-ssl.gotinder.com/' in first_url:
+            labeled_urls["Profile Photo 1"] = first_url
             clean_urls.append(first_url)
-            logger.info(f"Found first profile image: {first_url[:60]}...")
+            logger.info(f"Found first profile image (Profile Photo 1): {first_url[:60]}...")
+    else:
+        # If we couldn't find the first profile photo, log an error and return empty
+        logger.error("CRITICAL ERROR: Could not find Profile Photo 1. Stopping process.")
+        return [], {}  # Return empty list and empty dict to signal failure
     
-    # Now find all other URLs
+    # Look for other profile photos with specific labels (2, 3, etc.)
+    for i in range(2, 10):  # Look for photos 2 through 9
+        photo_pattern = rf'aria-label="Profile Photo {i}"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+        alt_photo_pattern = rf'aria-label="Profile Image {i}"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+        
+        photo_match = re.search(photo_pattern, html_content)
+        if not photo_match:
+            photo_match = re.search(alt_photo_pattern, html_content)
+            
+        if photo_match:
+            photo_url = photo_match.group(1)
+            # Clean the URL
+            photo_url = photo_url.replace('&amp;', '&')
+            photo_url = photo_url.replace('&quot;', '')
+            photo_url = photo_url.replace('&quot', '')
+            
+            # Final sanity check
+            if photo_url.endswith('\\') or photo_url.endswith('"') or photo_url.endswith("'"):
+                photo_url = photo_url[:-1]
+                
+            if photo_url and 'https://images-ssl.gotinder.com/' in photo_url and photo_url not in clean_urls:
+                labeled_urls[f"Profile Photo {i}"] = photo_url
+                clean_urls.append(photo_url)
+                logger.info(f"Found profile image (Profile Photo {i}): {photo_url[:60]}...")
+    
+    # Now find any remaining URLs for completeness
     pattern = r'https://images-ssl\.gotinder\.com/[^"\')\s\\]+'
     
     # Find all matches in the HTML
@@ -116,11 +148,15 @@ def extract_image_urls(html_content):
         # Only add if not already in the list and looks like a valid URL
         if url and url not in clean_urls and 'https://images-ssl.gotinder.com/' in url:
             clean_urls.append(url)
+            # These are unlabeled photos
+            if url not in labeled_urls.values():
+                labeled_urls[f"Unlabeled Photo {len(labeled_urls) + 1}"] = url
     
     logger.info(f"Found {len(clean_urls)} unique image URLs in total")
+    logger.info(f"Found {len(labeled_urls)} labeled image URLs")
     
-    # Return only the cleaned URLs
-    return clean_urls
+    # Return both the clean URLs list and the labeled URLs dictionary
+    return clean_urls, labeled_urls
 
 async def process_profile_directory(profile_dir):
     """Process a profile directory to extract and download images."""
@@ -133,33 +169,37 @@ async def process_profile_directory(profile_dir):
     with open(html_path, 'r', encoding='utf-8') as f:
         html_content = f.read()
     
-    # Extract image URLs
-    image_urls = extract_image_urls(html_content)
-    logger.info(f"Found {len(image_urls)} image URLs in HTML")
+    # Extract image URLs - now returns both clean_urls and labeled_urls
+    image_urls, labeled_urls = extract_image_urls(html_content)
     
-    # Clean URLs one more time before saving to backup file
-    clean_urls = []
-    for url in image_urls:
-        # Fix URL formatting
-        url = url.replace('&amp;', '&').replace('&quot;', '').replace('&quot', '')
-        # Remove any trailing characters
-        if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
-            url = url[:-1]
-        # Only include valid Tinder URLs
-        if url and 'https://images-ssl.gotinder.com/' in url:
-            clean_urls.append(url)
+    # If we didn't find Profile Photo 1, stop the process
+    if not image_urls or not labeled_urls:
+        logger.error("Could not find Profile Photo 1. Stopping the image extraction process.")
+        return False
+    
+    logger.info(f"Found {len(image_urls)} image URLs in HTML")
     
     # Save clean URLs to backup file
     backup_path = os.path.join(profile_dir, "image_urls_backup.txt")
     with open(backup_path, 'w', encoding='utf-8') as f:
-        for url in clean_urls:
+        for url in image_urls:
             f.write(f"{url}\n")
     
-    # Download images
-    download_tasks = []
-    successful_downloads = []
+    # Save labeled URLs to a separate file for reference
+    labeled_backup_path = os.path.join(profile_dir, "labeled_image_urls.txt")
+    with open(labeled_backup_path, 'w', encoding='utf-8') as f:
+        for label, url in labeled_urls.items():
+            f.write(f"{label}: {url}\n")
     
-    for i, url in enumerate(image_urls):
+    # Download images with proper labeling
+    download_tasks = []
+    image_paths = {}  # Dictionary to map URLs to their local file paths
+    
+    # First, prepare all the labeled photos to be downloaded
+    for label, url in labeled_urls.items():
+        # Create a safe filename from the label
+        safe_label = label.replace(" ", "_").lower()
+        
         # Detect image format from URL
         if "webp" in url.lower():
             ext = "webp"
@@ -170,14 +210,41 @@ async def process_profile_directory(profile_dir):
         else:
             ext = "jpg"  # Default to jpg
         
-        image_path = os.path.join(profile_dir, f"image_{i}.{ext}")
+        image_path = os.path.join(profile_dir, f"{safe_label}.{ext}")
+        image_paths[url] = {"path": image_path, "label": label}
         download_tasks.append(download_image(url, image_path))
+    
+    # Then add any unlabeled images that might have been missed
+    for i, url in enumerate(image_urls):
+        if url not in image_paths:
+            # Detect image format from URL
+            if "webp" in url.lower():
+                ext = "webp"
+            elif "jpg" in url.lower() or "jpeg" in url.lower():
+                ext = "jpg"
+            elif "png" in url.lower():
+                ext = "png"
+            else:
+                ext = "jpg"  # Default to jpg
+            
+            image_path = os.path.join(profile_dir, f"unlabeled_image_{i}.{ext}")
+            image_paths[url] = {"path": image_path, "label": f"Unlabeled Image {i}"}
+            download_tasks.append(download_image(url, image_path))
     
     # Download all images concurrently
     results = await asyncio.gather(*download_tasks)
     
-    # Count successful downloads
-    success_count = sum(1 for r in results if r)
+    # Process download results
+    successful_downloads = []
+    for i, (url, result) in enumerate(zip(image_paths.keys(), results)):
+        if result:
+            successful_downloads.append({
+                "url": url,
+                "path": image_paths[url]["path"],
+                "label": image_paths[url]["label"]
+            })
+    
+    success_count = len(successful_downloads)
     logger.info(f"Downloaded {success_count} of {len(image_urls)} images")
     
     # Update profile_data.json with new image information
@@ -187,21 +254,24 @@ async def process_profile_directory(profile_dir):
             with open(json_path, 'r', encoding='utf-8') as f:
                 profile_data = json.load(f)
             
-            # Clean URLs one final time before saving to JSON
-            clean_urls = []
-            for url in image_urls:
-                # Fix URL formatting
-                url = url.replace('&amp;', '&').replace('&quot;', '').replace('&quot', '')
-                # Remove any trailing characters
-                if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
-                    url = url[:-1]
-                # Only include valid Tinder URLs
-                if url and 'https://images-ssl.gotinder.com/' in url:
-                    clean_urls.append(url)
-            
-            # Update image information with clean URLs
-            profile_data["image_urls"] = clean_urls
+            # Update image information with labeled URLs
+            profile_data["image_urls"] = image_urls
+            profile_data["labeled_image_urls"] = labeled_urls
             profile_data["download_success_count"] = success_count
+            
+            # Add the successful downloads with labels
+            profile_data["downloaded_images"] = [
+                {
+                    "label": download["label"],
+                    "url": download["url"],
+                    "local_path": download["path"]
+                }
+                for download in successful_downloads
+            ]
+            
+            # Remove any screenshots from the root directory if they exist
+            if "screenshot_paths" in profile_data:
+                profile_data.pop("screenshot_paths", None)
             
             # Save updated JSON
             with open(json_path, 'w', encoding='utf-8') as f:
@@ -223,14 +293,23 @@ async def main():
     
     if os.path.isdir(path):
         # Process a profile directory
-        await process_profile_directory(path)
+        success = await process_profile_directory(path)
+        if not success:
+            logger.error("Failed to process profile directory. Exiting.")
+            sys.exit(1)  # Exit with error code if Profile Photo 1 wasn't found
     elif os.path.isfile(path) and path.endswith(".html"):
         # Process a single HTML file
         dirname = os.path.dirname(path)
         with open(path, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
-        image_urls = extract_image_urls(html_content)
+        image_urls, labeled_urls = extract_image_urls(html_content)
+        
+        # Check if we found the first profile photo
+        if not image_urls or not labeled_urls:
+            logger.error("CRITICAL ERROR: Could not find Profile Photo 1 in HTML. Exiting.")
+            sys.exit(1)  # Exit with error code if Profile Photo 1 wasn't found
+        
         logger.info(f"Found {len(image_urls)} image URLs in {path}")
         
         # Save URLs to backup file
@@ -240,6 +319,14 @@ async def main():
                 f.write(f"{url}\n")
         
         logger.info(f"Saved image URLs to {backup_path}")
+        
+        # Save labeled URLs to a separate file
+        labeled_backup_path = os.path.join(dirname, "labeled_image_urls_from_script.txt")
+        with open(labeled_backup_path, 'w', encoding='utf-8') as f:
+            for label, url in labeled_urls.items():
+                f.write(f"{label}: {url}\n")
+        
+        logger.info(f"Saved labeled image URLs to {labeled_backup_path}")
     else:
         logger.error(f"Invalid path: {path}")
 

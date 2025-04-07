@@ -349,69 +349,28 @@ async def extract_images(page: Page) -> List[str]:
         if not hasattr(page, "profile_data"):
             page.profile_data = {}
         
-        # First, look specifically for "Profile Photo 1" which is the main profile image
-        first_image_pattern = r'aria-label="Profile Photo 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+        # Import extract_image_urls function from extract_images module
+        from extract_images import extract_image_urls
         
-        # Also try alternate pattern "Profile Image 1" as a fallback
-        alt_first_image_pattern = r'aria-label="Profile Image 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+        # Use the enhanced image extraction function that handles labeled images
+        clean_urls, labeled_urls = extract_image_urls(html)
         
-        clean_urls = []
-        
-        # Try the first pattern
-        first_image_match = re.search(first_image_pattern, html)
-        
-        # If not found, try the alternate pattern
-        if not first_image_match:
-            first_image_match = re.search(alt_first_image_pattern, html)
-        
-        # If we found the first image, extract and clean it
-        if first_image_match:
-            first_url = first_image_match.group(1)
-            # Fix the URL by manually replacing all HTML entities
-            first_url = first_url.replace('&amp;', '&')
-            first_url = first_url.replace('&quot;', '')
-            first_url = first_url.replace('&quot', '')
-            
-            # Final sanity check to ensure URL is valid
-            if first_url.endswith('\\') or first_url.endswith('"') or first_url.endswith("'"):
-                first_url = first_url[:-1]
-                
-            # Make sure first URL is properly formatted with https://
-            if first_url and 'https://images-ssl.gotinder.com/' in first_url:
-                clean_urls.append(first_url)
-                logger.info(f"Found first profile image: {first_url[:60]}...")
-        
-        # Now find all other URLs
-        pattern = r'https://images-ssl\.gotinder\.com/[^"\')\s\\]+'
-        
-        # Find all matches in the HTML
-        raw_image_urls = re.findall(pattern, html)
-        
-        # Process each URL to clean it
-        for url in raw_image_urls:
-            # Remove any trailing characters, quotes, etc.
-            url = url.split('\\')[0]
-            
-            # Fix URL by manually replacing all HTML entities
-            url = url.replace('&amp;', '&')
-            url = url.replace('&quot;', '')
-            url = url.replace('&quot', '')
-            
-            # Final sanity check to ensure URL is valid
-            if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
-                url = url[:-1]
-                
-            # Only add if not already in the list and looks like a valid URL
-            if url and url not in clean_urls and 'https://images-ssl.gotinder.com/' in url:
-                clean_urls.append(url)
+        # If we didn't find Profile Photo 1, log an error and return empty list
+        if not clean_urls or not labeled_urls:
+            logger.error("CRITICAL ERROR: Could not find Profile Photo 1. Stopping the scraping process.")
+            return []
         
         logger.info(f"Found {len(clean_urls)} unique Tinder image URLs")
+        logger.info(f"Found {len(labeled_urls)} labeled Tinder image URLs")
         
-        # Store only the clean URLs in the page object
+        # Store both the clean URLs and labeled URLs in the page object
         if clean_urls:
             page.profile_data["image_urls_backup"] = clean_urls
             
-        # Return the clean URLs only
+        # Store the labeled URLs in the page object
+        page.profile_data["labeled_image_urls"] = labeled_urls
+            
+        # Return the clean URLs
         return clean_urls
         
     except Exception as e:
