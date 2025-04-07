@@ -34,11 +34,25 @@ async def download_image(url: str, save_path: str, timeout: int = 30, max_retrie
     # Clean the URL - remove quotes and other artifacts
     url = url.replace('&quot;', '').replace('"', '').replace("'", "")
     
-    # Make sure it's a valid Tinder image URL
+    # Make sure it's a valid URL
     if not url.startswith('https://'):
         logger.error(f"Invalid URL format: {url}")
         return False
     
+    # For Tinder images that include authentication tokens, we'll skip trying to download them
+    # as they require a valid session. Instead, we'll save the URL for reference.
+    if 'images-ssl.gotinder.com' in url and ('Policy=' in url or 'Signature=' in url):
+        logger.warning(f"Tinder image URL requires authentication, can't download directly: {url}")
+        
+        # Write the URL to the save path as a reference
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        with open(f"{save_path}.url", 'w') as f:
+            f.write(url)
+            
+        # Since we can't download the file, we'll treat this as a failure for the download operation
+        return False
+    
+    # For all other URLs, attempt normal download
     for attempt in range(max_retries):
         try:
             # Set up custom headers to avoid being blocked
@@ -90,8 +104,11 @@ async def download_image(url: str, save_path: str, timeout: int = 30, max_retrie
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error downloading image: {e.response.status_code} - {url}")
             if e.response.status_code == 403:
-                # Try a different approach for forbidden URLs - they might require authentication
-                logger.warning("Access forbidden, URL may require authentication")
+                # Save the URL that requires authentication
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                with open(f"{save_path}.url", 'w') as f:
+                    f.write(url)
+                logger.warning(f"Access forbidden, URL requires authentication. Saved URL to {save_path}.url")
                 return False
             
             # Retry for server errors (5xx)
@@ -143,6 +160,16 @@ async def process_profile_data(profile_data: Dict[str, Any]) -> Dict[str, Any]:
     
     # Process and download images
     image_urls = profile_data.get("image_urls", [])
+    
+    # Also check if we have backup image URLs
+    backup_urls = profile_data.get("image_urls_backup", [])
+    if backup_urls:
+        # Combine with main image URLs, eliminating duplicates
+        for url in backup_urls:
+            if url not in image_urls:
+                image_urls.append(url)
+        logger.info(f"Added {len(backup_urls)} backup image URLs, total is now {len(image_urls)}")
+    
     image_local_paths = []
     successful_downloads = []
     
@@ -152,6 +179,21 @@ async def process_profile_data(profile_data: Dict[str, Any]) -> Dict[str, Any]:
     with open(os.path.join(profile_dir, "image_urls_backup.txt"), 'w', encoding='utf-8') as f:
         for url in image_urls:
             f.write(f"{url}\n")
+            
+    # Move screenshots to the profile directory
+    screenshot_paths = profile_data.get("screenshot_paths", [])
+    if screenshot_paths:
+        logger.info(f"Moving {len(screenshot_paths)} screenshots to profile directory")
+        for i, screenshot_path in enumerate(screenshot_paths):
+            if os.path.exists(screenshot_path):
+                filename = os.path.basename(screenshot_path)
+                destination = os.path.join(profile_dir, filename)
+                try:
+                    import shutil
+                    shutil.copy2(screenshot_path, destination)
+                    logger.info(f"Copied screenshot to {destination}")
+                except Exception as e:
+                    logger.error(f"Error copying screenshot: {str(e)}")
     
     # Download images concurrently (but not too many at once to avoid rate limits)
     download_tasks = []

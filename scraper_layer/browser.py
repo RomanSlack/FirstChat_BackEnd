@@ -175,9 +175,23 @@ async def interact_with_profile(page: Page) -> bool:
         # Wait for profile to load
         await asyncio.sleep(1)
         
+        # We'll store screenshots in a temporary location and move them to the profile folder later
+        temp_dir = os.path.join(config.OUTPUT_DIR, "temp_screenshots")
+        os.makedirs(temp_dir, exist_ok=True)
+        
         # Take a screenshot before interaction
-        screenshot_path = os.path.join(config.OUTPUT_DIR, "before_interaction.png")
+        screenshot_path = os.path.join(temp_dir, "before_interaction.png")
         await page.screenshot(path=screenshot_path)
+        
+        # Store the screenshot paths so we can move them later
+        profile_data = getattr(page, "profile_data", {})
+        if not hasattr(page, "profile_data"):
+            page.profile_data = {}
+        
+        if "screenshot_paths" not in page.profile_data:
+            page.profile_data["screenshot_paths"] = []
+        
+        page.profile_data["screenshot_paths"].append(screenshot_path)
         
         # Navigate to the third image using right taps
         # This navigates through images without swiping profiles
@@ -202,8 +216,9 @@ async def interact_with_profile(page: Page) -> bool:
         await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
         
         # Take a screenshot after navigating to the 3rd image
-        screenshot_path = os.path.join(config.OUTPUT_DIR, "after_image_navigation.png")
+        screenshot_path = os.path.join(temp_dir, "after_image_navigation.png")
         await page.screenshot(path=screenshot_path)
+        page.profile_data["screenshot_paths"].append(screenshot_path)
         
         # Click "Show more" button
         try:
@@ -234,8 +249,9 @@ async def interact_with_profile(page: Page) -> bool:
             logger.warning(f"Could not find or click 'Show more' button: {str(e)}")
         
         # Take a screenshot after clicking show more
-        screenshot_path = os.path.join(config.OUTPUT_DIR, "after_show_more.png")
+        screenshot_path = os.path.join(temp_dir, "after_show_more.png")
         await page.screenshot(path=screenshot_path)
+        page.profile_data["screenshot_paths"].append(screenshot_path)
         
         # Click "View all 5" button if available
         try:
@@ -269,8 +285,9 @@ async def interact_with_profile(page: Page) -> bool:
         await asyncio.sleep(1)
         
         # Take a final screenshot
-        screenshot_path = os.path.join(config.OUTPUT_DIR, "after_interaction.png")
+        screenshot_path = os.path.join(temp_dir, "after_interaction.png")
         await page.screenshot(path=screenshot_path)
+        page.profile_data["screenshot_paths"].append(screenshot_path)
         
         return True
         
@@ -346,108 +363,55 @@ async def extract_images(page: Page) -> List[str]:
     image_urls = []
     
     try:
-        # First try to get background-image style from carousel items
-        for i in range(9):  # Tinder shows up to 9 images
-            carousel_selector = config.CAROUSEL_ITEM_SELECTOR.format(i)
-            try:
-                # First, look for the carousel item
-                carousel_item = await page.query_selector(carousel_selector)
-                if carousel_item:
-                    logger.info(f"Found carousel item {i}")
-                    
-                    # Try to find the div with background-image style inside the carousel item
-                    bg_div = await carousel_item.query_selector('div[class*="Bdrs(8px)"][class*="StretchedBox"]')
-                    if bg_div:
-                        # Get the style attribute
-                        style = await bg_div.get_attribute('style')
-                        if style and 'background-image' in style:
-                            # Extract URL from background-image: url("URL")
-                            url_match = re.search(r'background-image:\s*url\(["\']?(.*?)["\']?\)', style)
-                            if url_match:
-                                image_url = url_match.group(1)
-                                # Remove the quotes that might be in the URL
-                                image_url = image_url.replace('&quot;', '')
-                                if image_url and not image_url.startswith('data:'):
-                                    image_urls.append(image_url)
-                                    logger.info(f"Extracted image URL from carousel item {i} background")
-            except Exception as img_err:
-                logger.warning(f"Error extracting image {i}: {str(img_err)}")
+        # This is a much simpler approach that just extracts all Tinder image URLs from the HTML
+        logger.info("Extracting Tinder image URLs from HTML...")
+        html = await page.content()
         
-        # If we didn't get any images from background-image styles, try alternative methods
-        if not image_urls:
-            # Take a screenshot of the full page for analysis
-            await page.screenshot(path=os.path.join(config.OUTPUT_DIR, "extract_images_debug.png"))
-            logger.info("Saved debug screenshot for image extraction")
-            
-            # Try JavaScript to extract all background images
-            try:
-                bg_images = await page.evaluate("""
-                () => {
-                    const images = [];
-                    // Get all elements with background-image
-                    const elements = document.querySelectorAll('*');
-                    elements.forEach(el => {
-                        const style = window.getComputedStyle(el);
-                        if (style.backgroundImage && style.backgroundImage !== 'none') {
-                            let url = style.backgroundImage.slice(4, -1).replace(/["']/g, "");
-                            if (url && !url.startsWith('data:') && url.includes('images-ssl.gotinder.com')) {
-                                images.push(url);
-                            }
-                        }
-                    });
-                    return [...new Set(images)]; // Remove duplicates
-                }
-                """)
-                
-                if bg_images:
-                    for url in bg_images:
-                        if url not in image_urls:
-                            image_urls.append(url)
-                    logger.info(f"Extracted {len(image_urls)} background image URLs using JavaScript")
-            except Exception as js_err:
-                logger.warning(f"Error extracting images with JavaScript: {str(js_err)}")
-            
-            # Try to find any <img> tags as a fallback
-            if not image_urls:
-                selectors = [
-                    '.keen-slider__slide img',
-                    '.tappable-view img',
-                    'div[class*="carousel"] img',
-                    'img[src*="images-ssl"]',  # Tinder images often have this pattern
-                    'img'  # Last resort - any image
-                ]
-                
-                for selector in selectors:
-                    img_elements = await page.query_selector_all(selector)
-                    for img in img_elements:
-                        src = await img.get_attribute('src')
-                        if src and not src.startswith('data:') and src not in image_urls:
-                            image_urls.append(src)
-                    
-                    if image_urls:
-                        logger.info(f"Found {len(image_urls)} images using selector: {selector}")
-                        break
+        # Save the HTML for debugging in the temp directory
+        temp_dir = os.path.join(config.OUTPUT_DIR, "temp_screenshots")
+        os.makedirs(temp_dir, exist_ok=True)
         
-        # Last resort: Try to extract from the raw HTML
-        if not image_urls:
-            html = await page.content()
-            url_matches = re.findall(r'https://images-ssl\.gotinder\.com/[^"\')\s]+', html)
-            for url in url_matches:
-                # Clean up URL - sometimes there might be trailing characters
-                url = url.split('\\')[0]  # Remove any backslash and everything after
-                if url not in image_urls:
-                    image_urls.append(url)
-            logger.info(f"Extracted {len(image_urls)} image URLs from raw HTML")
-            
-        logger.info(f"Total extracted {len(image_urls)} image URLs")
+        html_debug_path = os.path.join(temp_dir, "profile.html")
+        with open(html_debug_path, 'w', encoding='utf-8') as f:
+            f.write(html)
+        logger.info(f"Saved HTML to {html_debug_path}")
+        
+        # Store the path to the HTML file for later processing
+        if not hasattr(page, "profile_data"):
+            page.profile_data = {}
+        if "screenshot_paths" not in page.profile_data:
+            page.profile_data["screenshot_paths"] = []
+        page.profile_data["screenshot_paths"].append(html_debug_path)
+        
+        # Simple regex pattern to find Tinder image URLs
+        pattern = r'https://images-ssl\.gotinder\.com/[^"\')\s\\]+'
+        
+        # Find all matches in the HTML
+        matches = re.findall(pattern, html)
+        
+        # Clean up URLs and remove duplicates
+        for url in matches:
+            # Remove any backslash and everything after (helps with escape sequences)
+            url = url.split('\\')[0].replace('"', '').replace("'", "")
+            if url and url not in image_urls:
+                image_urls.append(url)
+        
+        logger.info(f"Found {len(image_urls)} unique Tinder image URLs")
         
         # Save the list of URLs to a file for debugging
         if image_urls:
-            debug_file = os.path.join(config.OUTPUT_DIR, "image_urls.txt")
+            debug_file = os.path.join(temp_dir, "image_urls.txt")
             with open(debug_file, 'w') as f:
                 for url in image_urls:
                     f.write(f"{url}\n")
             logger.info(f"Saved image URLs to {debug_file}")
+            
+            # Store the image URLs in the page object for later use
+            page.profile_data["image_urls_backup"] = image_urls
+            
+            # Also store the path to the debug file
+            if "screenshot_paths" in page.profile_data:
+                page.profile_data["screenshot_paths"].append(debug_file)
         
         return image_urls
         
@@ -597,6 +561,11 @@ async def extract_profile_data(page: Page) -> Dict[str, Any]:
         # Save raw HTML for debugging if enabled
         if config.SAVE_HTML:
             profile_data["html"] = await page.content()
+        
+        # Add any screenshot paths and other debug info we've collected
+        if hasattr(page, "profile_data"):
+            for key, value in page.profile_data.items():
+                profile_data[key] = value
         
         logger.info(f"Extracted profile data for {name or 'Unknown'}")
         return profile_data

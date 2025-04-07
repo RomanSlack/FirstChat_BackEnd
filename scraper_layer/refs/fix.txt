@@ -1,0 +1,51 @@
+The difference between the working and broken image URLs comes down to HTML encoding of special characters — specifically &.
+
+✅ Working one (correct):
+text
+Copy
+Edit
+https://images-ssl.gotinder.com/...?.Policy=...&Signature=...&Key-Pair-Id=...
+In this version:
+
+& characters are raw and correctly separate query parameters.
+
+This URL works in browsers, fetch, requests, and standard file downloads.
+
+❌ Broken one:
+text
+Copy
+Edit
+...?Policy=...&amp;Signature=...&amp;Key-Pair-Id=...&quot;
+In this version:
+
+&amp; is the HTML-encoded version of &
+
+&quot; is the encoded version of the double quote "
+
+This breaks the URL when used in raw HTTP requests because it:
+
+treats the whole thing as one malformed query string
+
+May not resolve correctly when passed to fetch(), httpx, requests, or browser address bar
+
+🛠️ How to Fix the Broken One (in code):
+Use Python or JS to decode the HTML entities:
+
+Python:
+python
+Copy
+Edit
+import html
+clean_url = html.unescape(broken_url)
+JavaScript:
+js
+Copy
+Edit
+const textarea = document.createElement("textarea");
+textarea.innerHTML = broken_url;
+const clean_url = textarea.value;
+✅ TL;DR:
+Working URL	Broken URL
+Uses raw &	✅ Yes	❌ Encoded as &amp;
+Query parameters OK	✅ Separate &param=value	❌ Broken/malformed query
+Usable in code	✅ Yes	❌ No (must decode first)
