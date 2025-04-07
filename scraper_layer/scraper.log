@@ -687,3 +687,66 @@ Call log:
 2025-04-07 15:41:57 | INFO     | Trying alternative selector for 'View all 5' button...
 2025-04-07 15:41:57 | INFO     | Clicked alternative 'View all' button
 2025-04-07 15:41:59 | INFO     | Extracting Tinder image URLs from HTML...
+2025-04-07 15:49:49 | INFO     | Starting Tinder Profile Scraper
+2025-04-07 15:49:49 | INFO     | Target URL: https://tinder.com/app/recs
+2025-04-07 15:49:49 | INFO     | Output directory: ./scraped_profiles
+2025-04-07 15:49:49 | INFO     | Profiles to scrape: 1
+2025-04-07 15:49:49 | INFO     | Launching a new browser instance
+2025-04-07 15:49:49 | INFO     | Using Chrome profile: /home/roman-slack/.config/google-chrome/Profile 4
+2025-04-07 15:49:49 | INFO     | Scraper execution completed in 0.19 seconds
+2025-04-07 15:49:49 | INFO     | Successfully scraped 0 profiles
+2025-04-07 15:49:51 | INFO     | Starting Tinder Profile Scraper
+2025-04-07 15:49:51 | INFO     | Target URL: https://tinder.com/app/recs
+2025-04-07 15:49:51 | INFO     | Output directory: ./scraped_profiles
+2025-04-07 15:49:51 | INFO     | Profiles to scrape: 1
+2025-04-07 15:49:51 | INFO     | Attempting to connect to existing Chrome instance on port 9222
+2025-04-07 15:49:51 | INFO     | Connected to existing browser context
+2025-04-07 15:49:51 | INFO     | Connected to existing page
+2025-04-07 15:49:51 | INFO     | Successfully connected to Chrome with remote debugging
+2025-04-07 15:49:51 | INFO     | Already on Tinder: https://tinder.com/app/recs
+2025-04-07 15:49:52 | INFO     | Saved screenshot to ./scraped_profiles/tinder_screenshot.png
+2025-04-07 15:49:52 | INFO     | Successfully connected to Tinder
+2025-04-07 15:49:52 | INFO     | Processing profile 1/1
+2025-04-07 15:49:53 | INFO     | Navigating to 3rd image... (clicking at 440, 279)
+2025-04-07 15:49:54 | INFO     | Looking for 'Show more' button...
+2025-04-07 15:49:54 | INFO     | Clicked 'Show more' button
+2025-04-07 15:49:55 | INFO     | Looking for 'View all 5' button...
+2025-04-07 15:49:55 | INFO     | Trying alternative selector for 'View all 5' button...
+2025-04-07 15:49:55 | INFO     | Clicked alternative 'View all' button
+2025-04-07 15:49:56 | INFO     | Extracting Tinder image URLs from HTML...
+2025-04-07 15:50:30 | INFO     | Starting Tinder Profile Scraper
+2025-04-07 15:50:30 | INFO     | Target URL: https://tinder.com/app/recs
+2025-04-07 15:50:30 | INFO     | Output directory: ./scraped_profiles
+2025-04-07 15:50:30 | INFO     | Profiles to scrape: 1
+2025-04-07 15:50:31 | INFO     | Attempting to connect to existing Chrome instance on port 9222
+2025-04-07 15:50:31 | INFO     | Connected to existing browser context
+2025-04-07 15:50:31 | INFO     | Connected to existing page
+2025-04-07 15:50:31 | INFO     | Successfully connected to Chrome with remote debugging
+2025-04-07 15:50:31 | INFO     | Already on Tinder: https://tinder.com/app/recs
+2025-04-07 15:50:31 | INFO     | Saved screenshot to ./scraped_profiles/tinder_screenshot.png
+2025-04-07 15:50:31 | INFO     | Successfully connected to Tinder
+2025-04-07 15:50:31 | INFO     | Processing profile 1/1
+2025-04-07 15:50:32 | INFO     | Navigating to 3rd image... (clicking at 440, 279)
+2025-04-07 15:50:33 | INFO     | Looking for 'Show more' button...
+2025-04-07 15:50:33 | INFO     | Clicked 'Show more' button
+2025-04-07 15:50:34 | INFO     | Looking for 'View all 5' button...
+2025-04-07 15:50:34 | INFO     | Clicked 'View all 5' button
+2025-04-07 15:50:35 | INFO     | Extracting Tinder image URLs from HTML...
+2025-04-07 15:51:33 | INFO     | Starting Tinder Profile Scraper
+2025-04-07 15:51:33 | INFO     | Target URL: https://tinder.com/app/recs
+2025-04-07 15:51:33 | INFO     | Output directory: ./scraped_profiles
+2025-04-07 15:51:33 | INFO     | Profiles to scrape: 1
+2025-04-07 15:51:33 | INFO     | Attempting to connect to existing Chrome instance on port 9222
+2025-04-07 15:51:33 | INFO     | Connected to existing browser context
+2025-04-07 15:51:33 | INFO     | Connected to existing page
+2025-04-07 15:51:33 | INFO     | Successfully connected to Chrome with remote debugging
+2025-04-07 15:51:33 | INFO     | Already on Tinder: https://tinder.com/app/recs
+2025-04-07 15:51:34 | INFO     | Saved screenshot to ./scraped_profiles/tinder_screenshot.png
+2025-04-07 15:51:34 | INFO     | Successfully connected to Tinder
+2025-04-07 15:51:34 | INFO     | Processing profile 1/1
+2025-04-07 15:51:35 | INFO     | Navigating to 3rd image... (clicking at 440, 279)
+2025-04-07 15:51:36 | INFO     | Looking for 'Show more' button...
+2025-04-07 15:51:36 | INFO     | Clicked 'Show more' button
+2025-04-07 15:51:36 | INFO     | Looking for 'View all 5' button...
+2025-04-07 15:51:36 | INFO     | Clicked 'View all 5' button
+2025-04-07 15:51:38 | INFO     | Extracting Tinder image URLs from HTML...

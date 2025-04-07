@@ -65,18 +65,28 @@ def extract_image_urls(html_content):
     labeled_urls = {}
     clean_urls = []
     
-    # First, look specifically for "Profile Photo 1" which is the main profile image
-    first_image_pattern = r'aria-label="Profile Photo 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+    # First, try to get the FULL URL with signature for "Profile Photo 1" - very aggressive match
+    # This pattern looks for complete URLs with signature in divs with aria-label="Profile Photo 1"
     
-    # Also try alternate pattern "Profile Image 1" as a fallback
-    alt_first_image_pattern = r'aria-label="Profile Image 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+    # First try a super-aggressive pattern that captures all content between url( and )
+    first_image_pattern = r'aria-label="Profile Photo 1"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^)]+)\)'
+    
+    # Also try more restrictive pattern as fallback
+    alt_first_image_pattern = r'aria-label="Profile Photo 1"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^"\\]+)(?:&quot;|\\"|")'
+    
+    # And another fallback for "Profile Image 1"
+    alt_image_pattern = r'aria-label="Profile Image 1"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^"\\]+)(?:&quot;|\\"|")'
     
     # Try the first pattern
     first_image_match = re.search(first_image_pattern, html_content)
     
-    # If not found, try the alternate pattern
+    # If not found, try the first alternate pattern
     if not first_image_match:
         first_image_match = re.search(alt_first_image_pattern, html_content)
+        
+    # If still not found, try the second alternate pattern
+    if not first_image_match:
+        first_image_match = re.search(alt_image_pattern, html_content)
     
     # If we found the first image, add it first
     if first_image_match:
@@ -95,6 +105,15 @@ def extract_image_urls(html_content):
             labeled_urls["Profile Photo 1"] = first_url
             clean_urls.append(first_url)
             logger.info(f"Found first profile image (Profile Photo 1): {first_url[:60]}...")
+            
+            # Debug: Check for Signature parameter
+            if "Signature=" not in first_url:
+                logger.warning(f"First profile photo URL appears to be missing the Signature parameter")
+                # Save a sample of the HTML around this image for debugging
+                start_idx = html_content.find('aria-label="Profile Photo 1"')
+                if start_idx > 0:
+                    debug_html = html_content[max(0, start_idx-100):min(len(html_content), start_idx+500)]
+                    logger.debug(f"HTML context around Profile Photo 1: {debug_html}")
     else:
         # If we couldn't find the first profile photo, log an error and return empty
         logger.error("CRITICAL ERROR: Could not find Profile Photo 1. Stopping process.")
@@ -102,12 +121,20 @@ def extract_image_urls(html_content):
     
     # Look for other profile photos with specific labels (2, 3, etc.)
     for i in range(2, 10):  # Look for photos 2 through 9
-        photo_pattern = rf'aria-label="Profile Photo {i}"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
-        alt_photo_pattern = rf'aria-label="Profile Image {i}"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+        # Try super-aggressive pattern first
+        photo_pattern = rf'aria-label="Profile Photo {i}"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^)]+)\)'
+        
+        # Fallback to more restricted pattern
+        alt_photo_pattern = rf'aria-label="Profile Photo {i}"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^"\\]+)(?:&quot;|\\"|")'
+        
+        # Second fallback for "Profile Image" naming
+        alt2_photo_pattern = rf'aria-label="Profile Image {i}"[^>]*?background-image:\s*url\(&quot;(https://images-ssl\.gotinder\.com/[^"\\]+)(?:&quot;|\\"|")'
         
         photo_match = re.search(photo_pattern, html_content)
         if not photo_match:
             photo_match = re.search(alt_photo_pattern, html_content)
+            if not photo_match:
+                photo_match = re.search(alt2_photo_pattern, html_content)
             
         if photo_match:
             photo_url = photo_match.group(1)
@@ -125,16 +152,21 @@ def extract_image_urls(html_content):
                 clean_urls.append(photo_url)
                 logger.info(f"Found profile image (Profile Photo {i}): {photo_url[:60]}...")
     
-    # Now find any remaining URLs for completeness
-    pattern = r'https://images-ssl\.gotinder\.com/[^"\')\s\\]+'
+    # Now find any remaining URLs for completeness - use very aggressive pattern to get full URLs with signatures
+    # This pattern is designed to capture the entire URL including all query parameters and signatures
+    pattern = r'https://images-ssl\.gotinder\.com/[^"\')\s<>]{10,}(?:\?[^"\')\s<>]{10,})?'
     
     # Find all matches in the HTML
     raw_image_urls = re.findall(pattern, html_content)
     
-    # Process each URL to clean it
+    # Store complete unlabeled URLs
+    complete_unlabeled_urls = []
+    
+    # Process each URL to clean it and create complete_unlabeled_urls list
     for url in raw_image_urls:
         # Remove any trailing characters, quotes, etc.
-        url = url.split('\\')[0]
+        if '\\' in url:
+            url = url.split('\\')[0]
         
         # Fix URL by manually replacing all HTML entities
         url = url.replace('&amp;', '&')
@@ -147,10 +179,70 @@ def extract_image_urls(html_content):
             
         # Only add if not already in the list and looks like a valid URL
         if url and url not in clean_urls and 'https://images-ssl.gotinder.com/' in url:
+            # Store the complete URL
+            complete_unlabeled_urls.append(url)
             clean_urls.append(url)
             # These are unlabeled photos
             if url not in labeled_urls.values():
                 labeled_urls[f"Unlabeled Photo {len(labeled_urls) + 1}"] = url
+    
+    # Check if we need to fix incomplete labeled URLs by matching them with complete URLs
+    fixed_count = 0
+    for label, url in list(labeled_urls.items()):
+        # Check if this URL might be incomplete (no Signature parameter)
+        if "Signature=" not in url and url.startswith("https://images-ssl.gotinder.com/"):
+            # Try to find a matching complete URL that starts with this one
+            base_url = url.split('?')[0]  # Get the part before the query string
+            
+            for complete_url in complete_unlabeled_urls:
+                if complete_url.startswith(base_url) and "Signature=" in complete_url:
+                    # Found a match! Replace the incomplete URL with the complete one
+                    logger.info(f"Fixed incomplete URL for {label}")
+                    labeled_urls[label] = complete_url
+                    fixed_count += 1
+                    break
+    
+    if fixed_count > 0:
+        logger.info(f"Fixed {fixed_count} incomplete labeled URLs by matching with full URLs")
+        
+        # Also update the clean_urls list to make sure it has all the fixed URLs
+        for label, url in labeled_urls.items():
+            if url not in clean_urls:
+                clean_urls.append(url)
+    
+    # Try a more aggressive direct HTML approach to extract full labeled URLs
+    # This is a last-resort approach if the regular expressions failed to get the full URLs
+    full_url_pattern = r'(&quot;|\\"|")(https://images-ssl\.gotinder\.com/[^"\'&]+Signature=[^"\'&]+)(&quot;|\\"|")'
+    full_url_matches = re.findall(full_url_pattern, html_content)
+    
+    if full_url_matches:
+        logger.info(f"Found {len(full_url_matches)} potential full URLs with signatures directly from HTML")
+        
+        # Process each match to handle HTML entities and get clean URLs
+        full_urls = []
+        for match in full_url_matches:
+            if len(match) >= 2:
+                full_url = match[1]  # The middle part contains the URL
+                full_url = full_url.replace('&amp;', '&').replace('&quot;', '').replace('&quot', '')
+                full_urls.append(full_url)
+        
+        # Now try to match these full URLs with our labeled URLs based on the base part
+        direct_fixed_count = 0
+        for label, url in list(labeled_urls.items()):
+            if "Signature=" not in url:
+                base_url = url.split('?')[0]  # Get the part before the query string
+                for full_url in full_urls:
+                    if full_url.startswith(base_url) and "Signature=" in full_url:
+                        # Found a match! Replace the incomplete URL with the complete one
+                        logger.info(f"Fixed incomplete URL for {label} using direct HTML extraction")
+                        labeled_urls[label] = full_url
+                        if full_url not in clean_urls:
+                            clean_urls.append(full_url)
+                        direct_fixed_count += 1
+                        break
+        
+        if direct_fixed_count > 0:
+            logger.info(f"Fixed an additional {direct_fixed_count} URLs using direct HTML extraction")
     
     logger.info(f"Found {len(clean_urls)} unique image URLs in total")
     logger.info(f"Found {len(labeled_urls)} labeled image URLs")
