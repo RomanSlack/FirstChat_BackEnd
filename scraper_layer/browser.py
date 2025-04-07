@@ -448,43 +448,62 @@ async def extract_interests(page: Page) -> List[str]:
 
 async def extract_profile_sections(page: Page) -> Dict[str, Any]:
     """
-    Extract all profile sections from Tinder "Show more" area.
-
-    Args:
-        page: Playwright page object
+    Extract all profile details from Tinder’s profile details container.
+    This function attempts to capture all information regardless of how the user has chosen to display it.
+    It does so by selecting the main details container (using a broad CSS selector based on observed HTML)
+    and then iterating over its child sections. For each section, it will try to detect a header (section name)
+    and then extract key/value pairs (if present) or fallback to saving the full text.
 
     Returns:
-        Dictionary containing profile section information
+        Dictionary containing profile section information.
     """
     sections_data = {}
     try:
-        section_elements = await page.query_selector_all(config.PROFILE_SECTION_SELECTOR)
+        # Broad selector for the container that holds all profile details.
+        container = await page.query_selector('div.Bgc\\(--color--background-sparks-profile\\)')
+        if not container:
+            logger.warning("Profile details container not found.")
+            return sections_data
+
+        # Get child blocks that likely represent individual sections.
+        # (Using a class pattern observed in the sample HTML; adjust as needed.)
+        section_elements = await container.query_selector_all('div.P\\(24px\\)')
+        if not section_elements:
+            # Fallback: use all direct children of the container.
+            section_elements = await container.query_selector_all('div')
+
         for section in section_elements:
-            title_elem = await section.query_selector('div[class*="Mstart(8px)"][class*="C($c-ds-text-secondary)"]')
-            section_title = "Unknown"
-            if title_elem:
-                title_text = await title_elem.text_content()
-                if title_text:
-                    section_title = title_text.strip()
-            content_items = {}
-            subtitle_elems = await section.query_selector_all('h3[class*="C($c-ds-text-secondary)"]')
-            for subtitle_elem in subtitle_elems:
-                subtitle = await subtitle_elem.text_content()
-                if subtitle:
-                    subtitle = subtitle.strip()
-                    content_elem = await subtitle_elem.evaluate_handle('el => el.nextElementSibling')
-                    if content_elem:
-                        content_text = await content_elem.text_content()
-                        if content_text:
-                            content_items[subtitle] = content_text.strip()
-            if content_items:
-                sections_data[section_title] = content_items
-            if section_title == "Interests" and not content_items:
-                interests = await extract_interests(page)
-                if interests:
-                    sections_data["Interests"] = interests
-        logger.info(f"Extracted {len(sections_data)} profile sections")
+            # Attempt to extract a section name from a header.
+            header = await section.query_selector('div.Typs\\(body-2-strong\\), h3.Typs\\(subheading-2\\)')
+            if header:
+                section_name = (await header.text_content()).strip()
+            else:
+                # If no header is found, use the first line of the section's text as its name.
+                text = await section.text_content()
+                section_name = text.strip().split("\n")[0] if text else "Unknown"
+
+            # Now, try to extract key/value pairs.
+            # Look for keys as any h3 element with a class that suggests a label.
+            kv_elements = await section.query_selector_all('h3.Typs\\(subheading-2\\)')
+            content = {}
+            if kv_elements:
+                for kv in kv_elements:
+                    key = (await kv.text_content()).strip()
+                    # Try to get the next sibling element that might contain the value.
+                    sibling = await kv.evaluate_handle("node => node.nextElementSibling")
+                    if sibling:
+                        value = (await sibling.text_content()).strip()
+                        content[key] = value
+            else:
+                # If no key/value structure is detected, store the entire text.
+                full_text = await section.text_content()
+                content = full_text.strip()
+            sections_data[section_name] = content
+
+        # Log the extracted sections for debugging.
+        logger.info(f"Extracted {len(sections_data)} profile sections: {list(sections_data.keys())}")
         return sections_data
+
     except Exception as e:
         logger.error(f"Error extracting profile sections: {str(e)}")
         return sections_data
