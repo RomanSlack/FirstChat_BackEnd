@@ -1,131 +1,66 @@
-2025-04-07 16:51:20 | INFO     | Starting Tinder Profile Scraper
-2025-04-07 16:51:20 | INFO     | Target URL: https://tinder.com/app/recs
-2025-04-07 16:51:20 | INFO     | Output directory: ./scraped_profiles
-2025-04-07 16:51:20 | INFO     | Profiles to scrape: 1
-2025-04-07 16:51:21 | INFO     | Attempting to connect to existing Chrome instance on port 9222
-2025-04-07 16:51:21 | INFO     | Connected to existing browser context
-2025-04-07 16:51:21 | INFO     | Connected to existing page
-2025-04-07 16:51:21 | INFO     | Successfully connected to Chrome with remote debugging
-2025-04-07 16:51:21 | INFO     | Already on Tinder: https://tinder.com/app/recs
-2025-04-07 16:51:21 | INFO     | Successfully connected to Tinder
-2025-04-07 16:51:21 | INFO     | Processing profile 1/1
-2025-04-07 16:51:21 | INFO     | Starting profile extraction with enhanced image navigation...
-2025-04-07 16:51:21 | INFO     | Starting enhanced image extraction using DOM navigation...
-2025-04-07 16:51:21 | INFO     | Locating the image carousel container...
-2025-04-07 16:51:21 | INFO     | Found image carousel with 4 total images
-2025-04-07 16:51:21 | INFO     | Extracting the first image URL...
-2025-04-07 16:51:21 | INFO     | HTML Debug Info: {'slideHTML': '<div class="keen-slider__slide Wc($transform) Fxg(1)" aria-hidden="false" id="carousel-item-0" aria-label="1 of 4" role="tabpanel" aria-roledescription="slide" style="min-width: calc(100% + 0px); max-width: calc(100% + 0px); transform: translate3d(0px, 0px, 0px);"><div class="Bdrs(8px) Bgz(cv) Bgp(c) StretchedBox" aria-hidden="false" role="img" aria-label="Profile Photo 1" style="background-image: url(&quot;https://images-ssl.gotinder.com/u/5RPj2CpsFC8RdCgbjCiTQ1/6vnrdDwYeBcwDgfbdUugXz.webp?Poli', 'hasImgDiv': True, 'hasImgDivAlt': True, 'allNestedDivs': 1, 'slideLabel': '1 of 4'}
-2025-04-07 16:51:21 | INFO     | First image extraction approach: background-image-style
-2025-04-07 16:51:21 | INFO     | URL pattern used: double-quotes
-2025-04-07 16:51:21 | INFO     | Style attribute preview: background-image: url("https://images-ssl.gotinder.com/u/5RPj2CpsFC8RdCgbjCiTQ1/6vnrdDwYeBcwDgfbdUug
-2025-04-07 16:51:21 | INFO     | Successfully extracted Profile Photo 1: https://images-ssl.gotinder.com/u/5RPj2CpsFC8RdCgbjCiTQ1/6vn...
-2025-04-07 16:51:21 | INFO     | Extracting remaining 3 images...
-2025-04-07 16:51:21 | INFO     | Processing image #2 of 4...
-2025-04-07 16:51:21 | INFO     | Tapped right at coordinates (460, 279)
-2025-04-07 16:51:22 | INFO     | Current slide: 1 of 4
-2025-04-07 16:51:22 | WARNING  | Failed to extract image #2 - Wrong slide number
-2025-04-07 16:51:22 | WARNING  | Debug data: {'error': 'Wrong slide number', 'expected': 2, 'actual': '1 of 4'}
-2025-04-07 16:51:22 | INFO     | Processing image #3 of 4...
-2025-04-07 16:51:22 | INFO     | Tapped right at coordinates (460, 279)
-2025-04-07 16:51:22 | INFO     | Current slide: 1 of 4
-2025-04-07 16:51:22 | WARNING  | Failed to extract image #3 - Wrong slide number
-2025-04-07 16:51:22 | WARNING  | Debug data: {'error': 'Wrong slide number', 'expected': 3, 'actual': '1 of 4'}
-2025-04-07 16:51:22 | INFO     | Processing image #4 of 4...
-2025-04-07 16:51:22 | INFO     | Tapped right at coordinates (460, 279)
-2025-04-07 16:51:23 | INFO     | Current slide: 1 of 4
-2025-04-07 16:51:23 | INFO     | Image #4 extraction approach: background-image-style
-2025-04-07 16:51:23 | INFO     | URL pattern used: double-quotes
-2025-04-07 16:51:23 | INFO     | Navigating back to image #3 from image #4...
-2025-04-07 16:51:23 | INFO     | Completed image extraction. Found 1 images with 1 labels.
-2025-04-07 16:51:24 | INFO     | Looking for 'Show more' button...
-2025-04-07 16:51:24 | INFO     | Clicked 'Show more' button
-2025-04-07 16:51:24 | INFO     | Looking for 'View all' button...
-2025-04-07 16:51:25 | INFO     | Clicked 'View all' button
-2025-04-07 16:51:26 | INFO     | Starting enhanced image extraction using DOM navigation...
-2025-04-07 16:51:26 | INFO     | Locating the image carousel container...
-2025-04-07 16:51:26 | INFO     | Found image carousel with 5 total images
-2025-04-07 16:51:26 | INFO     | Extracting the first image URL...
-2025-04-07 16:51:26 | INFO     | HTML Debug Info: {'slideHTML': '<div class="keen-slider__slide Wc($transform) Fxg(1)" aria-hidden="false" id="carousel-item-2" aria-label="3 of 5" role="tabpanel" aria-roledescription="slide" style="min-width: calc(100% + 0px); max-width: calc(100% + 0px); transform: translate3d(-1150px, 0px, 0px);"><div class="profileCard__slider__imgShadow" style="--aspect-ratio: (4/5);"><div class="profileCard__slider__img Z(-1)" aria-hidden="false" role="img" aria-label="Profile Photo 3" style="background-image: url(&quot;https://images-ss', 'hasImgDiv': True, 'hasImgDivAlt': True, 'allNestedDivs': 2, 'slideLabel': '3 of 5'}
-2025-04-07 16:51:26 | INFO     | First image extraction approach: background-image-style
-2025-04-07 16:51:26 | INFO     | URL pattern used: double-quotes
-2025-04-07 16:51:26 | INFO     | Style attribute preview: background-image: url("https://images-ssl.gotinder.com/u/8EsAvzrutXsxeo929oiTpg/dw2ZKipABCvUz9ErXV2P
-2025-04-07 16:51:26 | INFO     | Successfully extracted Profile Photo 3: https://images-ssl.gotinder.com/u/8EsAvzrutXsxeo929oiTpg/dw2...
-2025-04-07 16:51:26 | INFO     | Extracting remaining 4 images...
-2025-04-07 16:51:26 | INFO     | Processing image #2 of 5...
-2025-04-07 16:51:26 | INFO     | Tapped right at coordinates (460, 279)
-2025-04-07 16:51:27 | INFO     | Current slide: 3 of 5
-2025-04-07 16:51:27 | WARNING  | Failed to extract image #2 - Wrong slide number
-2025-04-07 16:51:27 | WARNING  | Debug data: {'error': 'Wrong slide number', 'expected': 2, 'actual': '3 of 5'}
-2025-04-07 16:51:27 | INFO     | Processing image #3 of 5...
-2025-04-07 16:51:27 | INFO     | Tapped right at coordinates (460, 279)
-2025-04-07 16:51:27 | INFO     | Current slide: 3 of 5
-2025-04-07 16:51:27 | INFO     | Image #3 extraction approach: background-image-style
-2025-04-07 16:51:27 | INFO     | URL pattern used: double-quotes
-2025-04-07 16:51:27 | INFO     | Processing image #4 of 5...
-2025-04-07 16:51:27 | INFO     | Tapped right at coordinates (460, 279)
-2025-04-07 16:51:28 | INFO     | Current slide: 3 of 5
-2025-04-07 16:51:28 | WARNING  | Failed to extract image #4 - Wrong slide number
-2025-04-07 16:51:28 | WARNING  | Debug data: {'error': 'Wrong slide number', 'expected': 4, 'actual': '3 of 5'}
-2025-04-07 16:51:28 | INFO     | Processing image #5 of 5...
-2025-04-07 16:51:28 | INFO     | Tapped right at coordinates (460, 279)
-2025-04-07 16:51:28 | INFO     | Current slide: 3 of 5
-2025-04-07 16:51:28 | INFO     | Image #5 extraction approach: background-image-style
-2025-04-07 16:51:28 | INFO     | URL pattern used: double-quotes
-2025-04-07 16:51:28 | INFO     | Navigating back to image #3 from image #5...
-2025-04-07 16:51:29 | INFO     | Completed image extraction. Found 1 images with 1 labels.
-2025-04-07 16:51:29 | WARNING  | No specific Profile Photo 1 label found, using first image as Profile Photo 1
-2025-04-07 16:51:29 | INFO     | Extracted 5 interests
-2025-04-07 16:51:29 | INFO     | Extracted 3 profile sections
-2025-04-07 16:51:29 | INFO     | Extracted profile data for Jane
-2025-04-07 16:51:29 | INFO     | Added 1 backup image URLs, total is now 1
-2025-04-07 16:51:29 | INFO     | Processing 1 images including 2 labeled images
-2025-04-07 16:51:29 | INFO     | Processing Profile Photo 1 URL: https://images-ssl.gotinder.com/u/8EsAvzrutXsxeo929oiTpg/dw2ZKipABCvUz9ErXV2Poh.webp?Policy=eyJTdGF0...
-2025-04-07 16:51:29 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/8EsAvzrutXsxeo929oiTpg/dw2ZKipABCvUz9ErXV2Poh.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS84RXNBdnpydXRYc3hlbzkyOW9pVHBnLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ2NTIxNjR9fX1dfQ__&Signature=kg3v27PE0a~~YqtFjAEcEcMEW9HvqgrLcoT6ETYJNcgkqrgIcgPIZdEZI~~zfpKh83fQh9RP~s2~OE5fTAgnPmZ9hJL3zC7MOw0TX~wtl6Xq6a5XMgYdswj-SUGtvaz1QrD69HpeoCBdAkgUSxwkDL-fZCfC8dApPbsnLLLiQHAWIkyFaxuoLzbsMqItwiPZqywk4qDagFuWla748lJwE1~QnWSwL58Csp6NMIP0zct0L5m6tdhwmRvrwNVYzARTVL-TGvDW7jqL3eaIPiTVR0vKWIj0MfT~exvqQKSgavEMOVwEtBGKO6AFlO2OsjCsSNZRVyY83DirHJwBEvu5Cg__&Key-Pair-Id=K368TLDEUPA6OI
-2025-04-07 16:51:29 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/8EsAvzrutXsxeo929oiTpg/dw2ZKipABCvUz9ErXV2Poh.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS84RXNBdnpydXRYc3hlbzkyOW9pVHBnLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ2NTIxNjR9fX1dfQ__&Signature=kg3v27PE0a~~YqtFjAEcEcMEW9HvqgrLcoT6ETYJNcgkqrgIcgPIZdEZI~~zfpKh83fQh9RP~s2~OE5fTAgnPmZ9hJL3zC7MOw0TX~wtl6Xq6a5XMgYdswj-SUGtvaz1QrD69HpeoCBdAkgUSxwkDL-fZCfC8dApPbsnLLLiQHAWIkyFaxuoLzbsMqItwiPZqywk4qDagFuWla748lJwE1~QnWSwL58Csp6NMIP0zct0L5m6tdhwmRvrwNVYzARTVL-TGvDW7jqL3eaIPiTVR0vKWIj0MfT~exvqQKSgavEMOVwEtBGKO6AFlO2OsjCsSNZRVyY83DirHJwBEvu5Cg__&Key-Pair-Id=K368TLDEUPA6OI
-2025-04-07 16:51:29 | INFO     | Saved profile data to ./scraped_profiles/Jane_1744059089/profile_data.json
-2025-04-07 16:51:29 | INFO     | Created summary at ./scraped_profiles/Jane_1744059089/summary.txt
-2025-04-07 16:51:29 | INFO     | Downloaded 0 of 1 images
-2025-04-07 16:51:29 | INFO     | Successfully extracted Profile Photo 1: https://images-ssl.gotinder.com/u/8EsAvzrutXsxeo929oiTpg/dw2...
-2025-04-07 16:51:29 | INFO     | Processed data summary:
-2025-04-07 16:51:29 | INFO     |   Name: Jane
-2025-04-07 16:51:29 | INFO     |   Age: 19
-2025-04-07 16:51:29 | INFO     |   Images: 0/1
-2025-04-07 16:51:29 | INFO     |   Interests: 5
-2025-04-07 16:51:29 | INFO     |   Saved to: ./scraped_profiles/Jane_1744059089
-2025-04-07 16:51:29 | INFO     | Profile extraction complete. Stopping as requested.
-2025-04-07 16:51:29 | INFO     | Not closing browser since we're using remote debugging
-2025-04-07 16:51:29 | INFO     | Scraper execution completed in 8.98 seconds
-2025-04-07 16:51:29 | INFO     | Successfully scraped 1 profiles
-2025-04-07 17:01:44 | INFO     | Starting Tinder Profile Scraper
-2025-04-07 17:01:44 | INFO     | Target URL: https://tinder.com/app/recs
-2025-04-07 17:01:44 | INFO     | Output directory: ./scraped_profiles
-2025-04-07 17:01:44 | INFO     | Profiles to scrape: 1
-2025-04-07 17:01:45 | INFO     | Attempting to connect to existing Chrome instance on port 9222
-2025-04-07 17:01:45 | INFO     | Connected to existing browser context
-2025-04-07 17:01:45 | INFO     | Connected to existing page
-2025-04-07 17:01:45 | INFO     | Successfully connected to Chrome with remote debugging
-2025-04-07 17:01:45 | INFO     | Already on Tinder: https://tinder.com/app/recs
-2025-04-07 17:01:46 | INFO     | Successfully connected to Tinder
-2025-04-07 17:01:46 | INFO     | Processing profile 1/1
-2025-04-07 17:01:46 | INFO     | Starting profile extraction with enhanced image navigation...
-2025-04-07 17:01:46 | INFO     | Starting enhanced image extraction using DOM navigation...
-2025-04-07 17:01:46 | INFO     | Locating the image carousel container...
-2025-04-07 17:01:46 | INFO     | Found image carousel with 7 total images
-2025-04-07 17:01:46 | INFO     | Extracting the first image URL...
-2025-04-07 17:01:46 | INFO     | HTML Debug Info: {'slideHTML': '<div class="keen-slider__slide Wc($transform) Fxg(1)" aria-hidden="false" id="carousel-item-0" aria-label="1 of 7" role="tabpanel" aria-roledescription="slide" style="min-width: calc(100% + 0px); max-width: calc(100% + 0px); transform: translate3d(0px, 0px, 0px);"><div class="Bdrs(8px) Bgz(cv) Bgp(c) StretchedBox" aria-hidden="false" role="img" aria-label="Profile Photo 1" style="background-image: url(&quot;https://images-ssl.gotinder.com/u/hWcJ5RH8Up4c7Y9sHd8qpn/xtwmLc7XCEioGWopCCrVYT.webp?Poli', 'hasImgDiv': True, 'hasImgDivAlt': True, 'allNestedDivs': 1, 'slideLabel': '1 of 7'}
-2025-04-07 17:01:46 | INFO     | First image extraction approach: background-image-style
-2025-04-07 17:01:46 | INFO     | URL pattern used: double-quotes
-2025-04-07 17:01:46 | INFO     | Style attribute preview: background-image: url("https://images-ssl.gotinder.com/u/hWcJ5RH8Up4c7Y9sHd8qpn/xtwmLc7XCEioGWopCCrV
-2025-04-07 17:01:46 | INFO     | Successfully extracted Profile Photo 1: https://images-ssl.gotinder.com/u/hWcJ5RH8Up4c7Y9sHd8qpn/xtw...
-2025-04-07 17:01:46 | INFO     | Extracting remaining 6 images...
-2025-04-07 17:01:46 | INFO     | Found 12 slides in carousel: [{'id': 'carousel-item-0', 'label': '1 of 7', 'hidden': False}, {'id': 'carousel-item-1', 'label': '2 of 7', 'hidden': True}, {'id': 'carousel-item-2', 'label': '3 of 7', 'hidden': True}, {'id': 'carousel-item-3', 'label': '4 of 7', 'hidden': True}, {'id': 'carousel-item-4', 'label': '5 of 7', 'hidden': True}, {'id': 'carousel-item-5', 'label': '6 of 7', 'hidden': True}, {'id': 'carousel-item-6', 'label': '7 of 7', 'hidden': True}, {'id': 'carousel-item-0', 'label': '1 of 5', 'hidden': False}, {'id': 'carousel-item-1', 'label': '2 of 5', 'hidden': True}, {'id': 'carousel-item-2', 'label': '3 of 5', 'hidden': True}, {'id': 'carousel-item-3', 'label': '4 of 5', 'hidden': True}, {'id': 'carousel-item-4', 'label': '5 of 5', 'hidden': True}]
-2025-04-07 17:01:46 | INFO     | Processing image #2 of 7...
-2025-04-07 17:01:46 | INFO     | Found slide ID 'carousel-item-1' for image #2
-2025-04-07 17:01:46 | ERROR    | Error extracting images: Page.evaluate: SyntaxError: Identifier 'imgLabel' has already been declared
-    at eval (<anonymous>)
-    at UtilityScript.evaluate (<anonymous>:234:30)
-    at UtilityScript.<anonymous> (<anonymous>:1:44)
-2025-04-07 17:01:46 | ERROR    | Failed to extract any images. Stopping.
-2025-04-07 17:01:46 | INFO     | Not closing browser since we're using remote debugging
-2025-04-07 17:01:46 | INFO     | Scraper execution completed in 1.36 seconds
-2025-04-07 17:01:46 | INFO     | Successfully scraped 0 profiles
+2025-04-07 17:28:12 | INFO     | Starting Tinder Profile Scraper
+2025-04-07 17:28:12 | INFO     | Target URL: https://tinder.com/app/recs
+2025-04-07 17:28:12 | INFO     | Output directory: ./scraped_profiles
+2025-04-07 17:28:12 | INFO     | Profiles to scrape: 1
+2025-04-07 17:28:12 | INFO     | Attempting to connect to existing Chrome instance on port 9222
+2025-04-07 17:28:12 | INFO     | Connected to existing browser context
+2025-04-07 17:28:12 | INFO     | Connected to existing page
+2025-04-07 17:28:12 | INFO     | Successfully connected to Chrome with remote debugging
+2025-04-07 17:28:12 | INFO     | Already on Tinder: https://tinder.com/app/recs
+2025-04-07 17:28:13 | INFO     | Successfully connected to Tinder
+2025-04-07 17:28:13 | INFO     | Processing profile 1/1
+2025-04-07 17:28:13 | INFO     | Starting profile extraction with enhanced image navigation...
+2025-04-07 17:28:13 | INFO     | Starting enhanced image extraction using simulated taps...
+2025-04-07 17:28:13 | INFO     | Found image carousel with total images: 5
+2025-04-07 17:28:13 | INFO     | Extracted Profile Photo 1: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7L...
+2025-04-07 17:28:13 | INFO     | Tapping to load image 2 of 5...
+2025-04-07 17:28:14 | INFO     | Extracted Profile Photo 2: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7L...
+2025-04-07 17:28:14 | INFO     | Tapping to load image 3 of 5...
+2025-04-07 17:28:14 | INFO     | Extracted Profile Photo 3: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7L...
+2025-04-07 17:28:14 | INFO     | Tapping to load image 4 of 5...
+2025-04-07 17:28:15 | INFO     | Extracted Profile Photo 4: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7L...
+2025-04-07 17:28:15 | INFO     | Tapping to load image 5 of 5...
+2025-04-07 17:28:15 | INFO     | Extracted Profile Photo 5: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7L...
+2025-04-07 17:28:15 | INFO     | Navigating back to image 3 by tapping left 2 times...
+2025-04-07 17:28:17 | INFO     | Completed image extraction. Found 1 images.
+2025-04-07 17:28:18 | INFO     | Looking for 'Show more' button...
+2025-04-07 17:28:18 | INFO     | Clicked 'Show more' button
+2025-04-07 17:28:18 | INFO     | Looking for 'View all' button...
+2025-04-07 17:28:18 | INFO     | Trying alternative selector for 'View all' button...
+2025-04-07 17:28:18 | INFO     | Clicked alternative 'View all' button
+2025-04-07 17:28:20 | INFO     | Starting enhanced image extraction using simulated taps...
+2025-04-07 17:28:20 | ERROR    | Failed to locate image carousel container
+2025-04-07 17:28:20 | INFO     | Extracted 5 interests
+2025-04-07 17:28:20 | INFO     | Extracted 3 profile sections
+2025-04-07 17:28:20 | INFO     | Extracted profile data for kylie
+2025-04-07 17:28:20 | INFO     | Processing 1 images including 5 labeled images
+2025-04-07 17:28:20 | INFO     | Processing Profile Photo 1 URL: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7LT9pGojhLK5mKmukyZCi.webp?Policy=eyJTdGF0...
+2025-04-07 17:28:20 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7LT9pGojhLK5mKmukyZCi.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS83M3g5QnRWTUN2MVJQdWRIUmo5WXNLLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ1OTA5MzF9fX1dfQ__&Signature=F6jkBt027HWTIeGaYTieKZCtpY2Pf3KnLCx-PDvSVif~VE7D65shAX9FgPACokULmQc3psw6~zBz45E87qp0BrUlpwntb9gIFwphiiLoS68NruncxrudAszuyEfUY~uqbkYr0SMi3gmk6cnRjzmY5FgWfhLokcF4qJ26CT1eE~C~f9BsCfcVmz340vVi~pAb7d~Afv0eV1ix1sI8t9NJH3fIJ6gx6PBGtKXkcodtwwd7wjkIEMRUyFaCWmmwU2BgbX6vrkHLlY2H2teZVNoyEh9q8knIM2RtA74dT6UcNXsw4jGIIthjKefvPxSmgRu47Eme-BKcSSgwVZz3jxwONg__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 17:28:20 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7LT9pGojhLK5mKmukyZCi.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS83M3g5QnRWTUN2MVJQdWRIUmo5WXNLLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ1OTA5MzF9fX1dfQ__&Signature=F6jkBt027HWTIeGaYTieKZCtpY2Pf3KnLCx-PDvSVif~VE7D65shAX9FgPACokULmQc3psw6~zBz45E87qp0BrUlpwntb9gIFwphiiLoS68NruncxrudAszuyEfUY~uqbkYr0SMi3gmk6cnRjzmY5FgWfhLokcF4qJ26CT1eE~C~f9BsCfcVmz340vVi~pAb7d~Afv0eV1ix1sI8t9NJH3fIJ6gx6PBGtKXkcodtwwd7wjkIEMRUyFaCWmmwU2BgbX6vrkHLlY2H2teZVNoyEh9q8knIM2RtA74dT6UcNXsw4jGIIthjKefvPxSmgRu47Eme-BKcSSgwVZz3jxwONg__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 17:28:20 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7LT9pGojhLK5mKmukyZCi.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS83M3g5QnRWTUN2MVJQdWRIUmo5WXNLLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ1OTA5MzF9fX1dfQ__&Signature=F6jkBt027HWTIeGaYTieKZCtpY2Pf3KnLCx-PDvSVif~VE7D65shAX9FgPACokULmQc3psw6~zBz45E87qp0BrUlpwntb9gIFwphiiLoS68NruncxrudAszuyEfUY~uqbkYr0SMi3gmk6cnRjzmY5FgWfhLokcF4qJ26CT1eE~C~f9BsCfcVmz340vVi~pAb7d~Afv0eV1ix1sI8t9NJH3fIJ6gx6PBGtKXkcodtwwd7wjkIEMRUyFaCWmmwU2BgbX6vrkHLlY2H2teZVNoyEh9q8knIM2RtA74dT6UcNXsw4jGIIthjKefvPxSmgRu47Eme-BKcSSgwVZz3jxwONg__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 17:28:20 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7LT9pGojhLK5mKmukyZCi.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS83M3g5QnRWTUN2MVJQdWRIUmo5WXNLLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ1OTA5MzF9fX1dfQ__&Signature=F6jkBt027HWTIeGaYTieKZCtpY2Pf3KnLCx-PDvSVif~VE7D65shAX9FgPACokULmQc3psw6~zBz45E87qp0BrUlpwntb9gIFwphiiLoS68NruncxrudAszuyEfUY~uqbkYr0SMi3gmk6cnRjzmY5FgWfhLokcF4qJ26CT1eE~C~f9BsCfcVmz340vVi~pAb7d~Afv0eV1ix1sI8t9NJH3fIJ6gx6PBGtKXkcodtwwd7wjkIEMRUyFaCWmmwU2BgbX6vrkHLlY2H2teZVNoyEh9q8knIM2RtA74dT6UcNXsw4jGIIthjKefvPxSmgRu47Eme-BKcSSgwVZz3jxwONg__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 17:28:20 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7LT9pGojhLK5mKmukyZCi.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS83M3g5QnRWTUN2MVJQdWRIUmo5WXNLLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ1OTA5MzF9fX1dfQ__&Signature=F6jkBt027HWTIeGaYTieKZCtpY2Pf3KnLCx-PDvSVif~VE7D65shAX9FgPACokULmQc3psw6~zBz45E87qp0BrUlpwntb9gIFwphiiLoS68NruncxrudAszuyEfUY~uqbkYr0SMi3gmk6cnRjzmY5FgWfhLokcF4qJ26CT1eE~C~f9BsCfcVmz340vVi~pAb7d~Afv0eV1ix1sI8t9NJH3fIJ6gx6PBGtKXkcodtwwd7wjkIEMRUyFaCWmmwU2BgbX6vrkHLlY2H2teZVNoyEh9q8knIM2RtA74dT6UcNXsw4jGIIthjKefvPxSmgRu47Eme-BKcSSgwVZz3jxwONg__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 17:28:21 | INFO     | Saved profile data to ./scraped_profiles/kylie_1744061300/profile_data.json
+2025-04-07 17:28:21 | INFO     | Created summary at ./scraped_profiles/kylie_1744061300/summary.txt
+2025-04-07 17:28:21 | INFO     | Downloaded 0 of 1 images
+2025-04-07 17:28:21 | INFO     | Successfully extracted Profile Photo 1: https://images-ssl.gotinder.com/u/73x9BtVMCv1RPudHRj9YsK/t7L...
+2025-04-07 17:28:21 | INFO     | Processed data summary:
+2025-04-07 17:28:21 | INFO     |   Name: kylie
+2025-04-07 17:28:21 | INFO     |   Age: 18
+2025-04-07 17:28:21 | INFO     |   Images: 0/1
+2025-04-07 17:28:21 | INFO     |   Interests: 5
+2025-04-07 17:28:21 | INFO     |   Saved to: ./scraped_profiles/kylie_1744061300
+
+==================================================
+Profile 1/1 scraped successfully:
+Name: kylie
+Age: 18
+Images: 0/1
+Interests: Gym, Music, Fashion, Movies, Self Care
+Saved to: ./scraped_profiles/kylie_1744061300
+==================================================
+
+2025-04-07 17:28:21 | INFO     | Profile extraction complete. Stopping as requested.
+2025-04-07 17:28:21 | INFO     | Not closing browser since we're using remote debugging
+2025-04-07 17:28:21 | INFO     | Scraper execution completed in 8.64 seconds
+2025-04-07 17:28:21 | INFO     | Successfully scraped 1 profiles
