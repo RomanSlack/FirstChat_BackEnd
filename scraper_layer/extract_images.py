@@ -19,6 +19,11 @@ logger.add(sys.stderr, level="INFO")
 
 async def download_image(url, save_path, timeout=30, max_retries=3):
     """Download image from URL and save to path."""
+    # Fix the URL one more time before download to be safe
+    url = url.replace('&amp;', '&')
+    url = url.replace('&quot;', '')
+    url = url.replace('&quot', '')
+    
     for attempt in range(max_retries):
         try:
             headers = {
@@ -56,27 +61,53 @@ def extract_image_urls(html_content):
     """Extract all Tinder image URLs from HTML content."""
     import html
     
-    # We want to extract all image URLs from all slides
-    # This pattern will match URLs from images-ssl.gotinder.com
+    # First, look for the main profile image which is under "Profile Image 1" label
+    first_image_pattern = r'aria-label="Profile Image 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+    first_image_match = re.search(first_image_pattern, html_content)
+    
+    clean_urls = []
+    
+    # If we found the first image, add it first
+    if first_image_match:
+        first_url = first_image_match.group(1)
+        # Fix the URL by manually replacing all HTML entities
+        first_url = first_url.replace('&amp;', '&')
+        first_url = first_url.replace('&quot;', '')
+        first_url = first_url.replace('&quot', '')
+        
+        # Final sanity check to ensure URL is valid
+        if first_url.endswith('\\') or first_url.endswith('"') or first_url.endswith("'"):
+            first_url = first_url[:-1]
+            
+        # Make sure first URL is properly formatted with https://
+        if first_url and 'https://images-ssl.gotinder.com/' in first_url:
+            clean_urls.append(first_url)
+            logger.info(f"Found first profile image: {first_url[:60]}...")
+    
+    # Now find all other URLs
     pattern = r'https://images-ssl\.gotinder\.com/[^"\')\s\\]+'
     
     # Find all matches in the HTML
     image_urls = re.findall(pattern, html_content)
     
-    # Clean up URLs and remove duplicates
-    clean_urls = []
+    # Process each URL
     for url in image_urls:
         # Remove any trailing characters, quotes, etc.
-        url = url.split('\\')[0].replace('"', '').replace("'", "")
+        url = url.split('\\')[0]
         
-        # Decode HTML entities like &amp; to &
-        url = html.unescape(url)
+        # Fix URL by manually replacing all HTML entities
+        url = url.replace('&amp;', '&')
+        url = url.replace('&quot;', '')
+        url = url.replace('&quot', '')
         
-        # Only add if not already in the list
-        if url and url not in clean_urls:
+        # Only add if not already in the list and looks like a valid URL
+        if url and url not in clean_urls and 'https://images-ssl.gotinder.com/' in url:
+            # Final sanity check to ensure URL is valid
+            if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
+                url = url[:-1]
             clean_urls.append(url)
     
-    logger.info(f"Found {len(clean_urls)} unique image URLs")
+    logger.info(f"Found {len(clean_urls)} unique image URLs in total")
     return clean_urls
 
 async def process_profile_directory(profile_dir):
@@ -94,10 +125,22 @@ async def process_profile_directory(profile_dir):
     image_urls = extract_image_urls(html_content)
     logger.info(f"Found {len(image_urls)} image URLs in HTML")
     
-    # Save URLs to backup file
+    # Clean URLs one more time before saving to backup file
+    clean_urls = []
+    for url in image_urls:
+        # Fix URL formatting
+        url = url.replace('&amp;', '&').replace('&quot;', '').replace('&quot', '')
+        # Remove any trailing characters
+        if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
+            url = url[:-1]
+        # Only include valid Tinder URLs
+        if url and 'https://images-ssl.gotinder.com/' in url:
+            clean_urls.append(url)
+    
+    # Save clean URLs to backup file
     backup_path = os.path.join(profile_dir, "image_urls_backup.txt")
     with open(backup_path, 'w', encoding='utf-8') as f:
-        for url in image_urls:
+        for url in clean_urls:
             f.write(f"{url}\n")
     
     # Download images
@@ -132,8 +175,20 @@ async def process_profile_directory(profile_dir):
             with open(json_path, 'r', encoding='utf-8') as f:
                 profile_data = json.load(f)
             
-            # Update image information
-            profile_data["image_urls"] = image_urls
+            # Clean URLs one final time before saving to JSON
+            clean_urls = []
+            for url in image_urls:
+                # Fix URL formatting
+                url = url.replace('&amp;', '&').replace('&quot;', '').replace('&quot', '')
+                # Remove any trailing characters
+                if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
+                    url = url[:-1]
+                # Only include valid Tinder URLs
+                if url and 'https://images-ssl.gotinder.com/' in url:
+                    clean_urls.append(url)
+            
+            # Update image information with clean URLs
+            profile_data["image_urls"] = clean_urls
             profile_data["download_success_count"] = success_count
             
             # Save updated JSON
