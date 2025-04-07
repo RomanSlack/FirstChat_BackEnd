@@ -237,10 +237,10 @@ async def extract_images(page: Page) -> List[str]:
     Extract image URLs from Tinder carousel using DOM navigation and simulated taps.
 
     Steps:
-      1. Locate the carousel container and read the total number of images from the first visible slide's aria-label.
-      2. Extract the first image URL from the visible slide.
+      1. Locate the carousel container and read the total number of images from the first slide's aria-label.
+      2. Extract the first image URL from slide index 0.
       3. For each subsequent image, simulate a tap on the right side of the screen to load the next image,
-         wait for the slide transition, then extract its URL.
+         wait for the slide transition, then extract its URL by slide index.
       4. After collecting all image URLs, simulate left taps to return to the 3rd image (or remain if fewer than 3).
 
     Returns:
@@ -285,22 +285,27 @@ async def extract_images(page: Page) -> List[str]:
             logger.error("No images found in carousel")
             return []
 
-        # Helper function to extract URL from the currently visible slide.
-        async def get_visible_image():
-            return await page.evaluate('''() => {
-                const slide = document.querySelector('.keen-slider__slide[aria-hidden="false"]');
-                if (!slide) return null;
-                let imgDiv = slide.querySelector('div[style*="background-image"]') ||
-                             slide.querySelector('div[role="img"]') ||
-                             slide.querySelector('div[aria-label*="Profile Photo"]');
-                if (!imgDiv) return null;
-                const style = imgDiv.getAttribute('style') || "";
-                const urlMatch = style.match(/url\(["']?(.*?)["']?\)/);
-                return urlMatch ? urlMatch[1] : null;
-            }''')
+        # Helper function: get the image URL from a slide by index.
+        async def get_image_by_index(index):
+            return await page.evaluate('(index) => { '
+                'const container = document.querySelector(\'div[data-keyboard-gamepad="true"][aria-hidden="false"]\');'
+                'if (!container) return null;'
+                'const slides = container.querySelectorAll(\'.keen-slider__slide\');'
+                'if (index < slides.length) {'
+                '  const slide = slides[index];'
+                '  let imgDiv = slide.querySelector(\'div[style*="background-image"]\') || '
+                '               slide.querySelector(\'div[role="img"]\') || '
+                '               slide.querySelector(\'div[aria-label*="Profile Photo"]\');'
+                '  if (!imgDiv) return null;'
+                '  const style = imgDiv.getAttribute("style") || "";'
+                '  const urlMatch = style.match(/url\\(["\\\']?(.*?)["\\\']?\\)/);'
+                '  return urlMatch ? urlMatch[1] : null;'
+                '}'
+                'return null;'
+                '}', index)
 
-        # Step 2: Extract the first image.
-        first_url = await get_visible_image()
+        # Step 2: Extract the first image (slide index 0).
+        first_url = await get_image_by_index(0)
         if not first_url:
             logger.error("Failed to extract the first image URL")
             return []
@@ -316,17 +321,17 @@ async def extract_images(page: Page) -> List[str]:
         left_tap_x = int(screen_width * 0.2)    # tap on left 20% of screen width
         tap_y = int(screen_height * 0.5)        # vertically centered
 
-        # Step 3: For each subsequent image, tap right and extract the URL.
-        for i in range(2, total_images + 1):
-            logger.info(f"Tapping to load image {i} of {total_images}...")
+        # Step 3: For each subsequent image, tap right and extract its URL by slide index.
+        for i in range(1, total_images):
+            logger.info(f"Tapping to load image {i+1} of {total_images}...")
             await page.mouse.click(right_tap_x, tap_y)
-            await asyncio.sleep(0.6)  # wait for the slide transition
-            img_url = await get_visible_image()
+            await asyncio.sleep(1.0)  # increased delay to ensure slide transition
+            img_url = await get_image_by_index(i)
             if not img_url:
-                logger.warning(f"Could not extract image URL for image {i}")
+                logger.warning(f"Could not extract image URL for image {i+1}")
                 continue
             img_url = img_url.replace('&amp;', '&')
-            label = f"Profile Photo {i}"
+            label = f"Profile Photo {i+1}"
             labeled_urls[label] = img_url
             if img_url not in clean_urls:
                 clean_urls.append(img_url)
@@ -334,12 +339,12 @@ async def extract_images(page: Page) -> List[str]:
 
         # Step 4: Navigate back to the third image (if there are at least 3).
         target_image = 3 if total_images >= 3 else total_images
-        current_image = total_images  # assume the last loaded image is current
+        current_image = total_images  # assume the last loaded slide is current
         left_taps_needed = current_image - target_image
         logger.info(f"Navigating back to image {target_image} by tapping left {left_taps_needed} times...")
         for _ in range(left_taps_needed):
             await page.mouse.click(left_tap_x, tap_y)
-            await asyncio.sleep(0.6)
+            await asyncio.sleep(1.0)
 
         logger.info(f"Completed image extraction. Found {len(clean_urls)} images.")
         page.profile_data["image_urls"] = clean_urls
@@ -349,6 +354,7 @@ async def extract_images(page: Page) -> List[str]:
     except Exception as e:
         logger.error(f"Error extracting images: {str(e)}")
         return []
+
 
 
 async def extract_interests(page: Page) -> List[str]:
