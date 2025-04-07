@@ -585,3 +585,86 @@ Call log:
 2025-04-07 15:24:58 | INFO     | Not closing browser since we're using remote debugging
 2025-04-07 15:24:58 | INFO     | Scraper execution completed in 5.68 seconds
 2025-04-07 15:24:58 | INFO     | Successfully scraped 1 profiles
+2025-04-07 15:29:44 | INFO     | Starting Tinder Profile Scraper
+2025-04-07 15:29:44 | INFO     | Target URL: https://tinder.com/app/recs
+2025-04-07 15:29:44 | INFO     | Output directory: ./scraped_profiles
+2025-04-07 15:29:44 | INFO     | Profiles to scrape: 1
+2025-04-07 15:29:44 | INFO     | Attempting to connect to existing Chrome instance on port 9222
+2025-04-07 15:29:44 | INFO     | Connected to existing browser context
+2025-04-07 15:29:44 | INFO     | Connected to existing page
+2025-04-07 15:29:44 | INFO     | Successfully connected to Chrome with remote debugging
+2025-04-07 15:29:44 | INFO     | Already on Tinder: https://tinder.com/app/recs
+2025-04-07 15:29:45 | INFO     | Saved screenshot to ./scraped_profiles/tinder_screenshot.png
+2025-04-07 15:29:45 | INFO     | Successfully connected to Tinder
+2025-04-07 15:29:45 | INFO     | Processing profile 1/1
+2025-04-07 15:29:46 | INFO     | Navigating to 3rd image... (clicking at 440, 279)
+2025-04-07 15:29:47 | INFO     | Looking for 'Show more' button...
+2025-04-07 15:29:47 | INFO     | Clicked 'Show more' button
+2025-04-07 15:29:48 | INFO     | Looking for 'View all 5' button...
+2025-04-07 15:29:48 | INFO     | Trying alternative selector for 'View all 5' button...
+2025-04-07 15:29:48 | INFO     | Clicked alternative 'View all' button
+2025-04-07 15:29:49 | INFO     | Extracting Tinder image URLs from HTML...
+2025-04-07 15:29:49 | INFO     | Found first profile image: https://images-ssl.gotinder.com/u/ombEtMbHwuPxz8MWYB4eSA/75m...
+2025-04-07 15:29:49 | INFO     | Found 4 unique Tinder image URLs
+2025-04-07 15:29:49 | INFO     | Extracted 5 interests
+2025-04-07 15:29:49 | INFO     | Extracted 3 profile sections
+2025-04-07 15:29:49 | INFO     | Extracted profile data for kylie
+2025-04-07 15:29:49 | INFO     | Added 4 backup image URLs, total is now 4
+2025-04-07 15:29:49 | INFO     | Processing 4 images
+2025-04-07 15:29:49 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/ombEtMbHwuPxz8MWYB4eSA/75m5xKFMPU2jeC2Peo5hnn.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS9vbWJFdE1iSHd1UHh6OE1XWUI0ZVNBLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ2Mjg2NTd9fX1dfQ__
+2025-04-07 15:29:49 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/ombEtMbHwuPxz8MWYB4eSA/75m5xKFMPU2jeC2Peo5hnn.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS9vbWJFdE1iSHd1UHh6OE1XWUI0ZVNBLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ2Mjg2NTd9fX1dfQ__&Signature=BCCU4kEj21TNketVmU7xliibpbpxRqf0pHOQBaIWsZNUqbXmHRUdoS0BnIvHBoLcOsfUJaXpTw2~igGMQ1~1y2uSB93rUDnmzNUAfvrJ9tySoaI0Eqwj3bwsjpKtNRG~cap7Mg5bDgaZcx6YhakaoCME8STPs52bIc8~tGXBdORUYHeFrIcfzvNfB~gLUZ3YGmwuinjAvDnlPYzdqhVKeRts1yj5L0CE3QJdVKRM~kfQVLyQAqhgofEJxV~3-G-jmsXN7S9d2hEZD8iNa2qeDy17YCobJhjGhr7BJQDHW82hzz4TPjkYOIem7W7lao19xXv5kp8yeUSDaQjcKjzyxQ__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 15:29:49 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/xeLYABY7Dd5vahvgHhrqPS/pzjz3HS8LoZtuhiPajD1dX.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS94ZUxZQUJZN0RkNXZhaHZnSGhycVBTLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ2Mjg2NTd9fX1dfQ__&Signature=H2Vq7byAV~43mnhl~f-7hauDBX2ipr4WnNCfGP8fmj7gjh7PfD5bEs2Fhi1iNAZ81tQYzQDbaiiChFIx3sCE-vQqidf2FfbcMRSlxbmVLiZZaJZOqmpubJ9USj1R7m19dfbVstB4cmacJaIrYFG31OJUnFz1UBz0uWGKc~WPnctwCopyXLIOnSE3MiteJfuh~s5dTb590XwUW5LRkF2yjZ75IAYOTSPkBC1BrhSjXfswALnVBUmOYjawC6-a3cCNqUCE2VNbsgvhnSkK3TRrsSbkp~mHgRD5k1Ud7hs4tI27Ld~41TToL-3jg0lbj2BtqCNYawZL5RPwnylxm4Sozw__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 15:29:50 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/vn5Y8vCGNvqYWjSz5STtkG/8MbNcWrw5Eqh3AW7q5TSZU.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS92bjVZOHZDR052cVlXalN6NVNUdGtHLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ2Mjg2NTd9fX1dfQ__&Signature=QuxHrzeHuM7fy3FIcDty36e1df4KvU0KyJQPlo~VlWm4K8h6CWBmfthH0HSxbZ6FEgXhBFr62RhBP4o7KNhBoeZc~ijd7LiqI5OQHXs9DSDj9E9bToEBHuJDe6zNmjqagdFQ4HTcZUTmI6vRu9qabaPhG55Tp3Xh4FU4LNYDoQ-uT1os5Xf6dZxsq-R77f0n2JKh5i7MdSvIh1egdZq8UNm8NemOPLS~vm~asRTazqdSVcozlNs3fMLjbOuyZmdwK8m3qgUEFZ0HQac8CnJHLvJJpwcWzGRuuT1XImcb~442-bHxhbinSc2Zh2DqovdMGoZu3qzMAszuty6bCJ5cTA__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 15:29:50 | INFO     | Saved profile data to ./scraped_profiles/kylie_1744054189/profile_data.json
+2025-04-07 15:29:50 | INFO     | Created summary at ./scraped_profiles/kylie_1744054189/summary.txt
+2025-04-07 15:29:50 | INFO     | Downloaded 0 of 4 images
+2025-04-07 15:29:50 | INFO     | Processed data summary:
+2025-04-07 15:29:50 | INFO     |   Name: kylie
+2025-04-07 15:29:50 | INFO     |   Age: 18
+2025-04-07 15:29:50 | INFO     |   Images: 0/4
+2025-04-07 15:29:50 | INFO     |   Interests: 5
+2025-04-07 15:29:50 | INFO     |   Saved to: ./scraped_profiles/kylie_1744054189
+2025-04-07 15:29:50 | INFO     | Profile extraction complete. Stopping as requested.
+2025-04-07 15:29:50 | INFO     | Not closing browser since we're using remote debugging
+2025-04-07 15:29:50 | INFO     | Scraper execution completed in 6.17 seconds
+2025-04-07 15:29:50 | INFO     | Successfully scraped 1 profiles
+2025-04-07 15:31:32 | INFO     | Starting Tinder Profile Scraper
+2025-04-07 15:31:32 | INFO     | Target URL: https://tinder.com/app/recs
+2025-04-07 15:31:32 | INFO     | Output directory: ./scraped_profiles
+2025-04-07 15:31:32 | INFO     | Profiles to scrape: 1
+2025-04-07 15:31:32 | INFO     | Attempting to connect to existing Chrome instance on port 9222
+2025-04-07 15:31:32 | INFO     | Connected to existing browser context
+2025-04-07 15:31:32 | INFO     | Connected to existing page
+2025-04-07 15:31:32 | INFO     | Successfully connected to Chrome with remote debugging
+2025-04-07 15:31:32 | INFO     | Already on Tinder: https://tinder.com/app/recs
+2025-04-07 15:31:33 | INFO     | Saved screenshot to ./scraped_profiles/tinder_screenshot.png
+2025-04-07 15:31:33 | INFO     | Successfully connected to Tinder
+2025-04-07 15:31:33 | INFO     | Processing profile 1/1
+2025-04-07 15:31:34 | INFO     | Navigating to 3rd image... (clicking at 440, 279)
+2025-04-07 15:31:35 | INFO     | Looking for 'Show more' button...
+2025-04-07 15:31:35 | INFO     | Clicked 'Show more' button
+2025-04-07 15:31:36 | INFO     | Looking for 'View all 5' button...
+2025-04-07 15:31:36 | INFO     | Clicked 'View all 5' button
+2025-04-07 15:31:37 | INFO     | Extracting Tinder image URLs from HTML...
+2025-04-07 15:31:37 | INFO     | Found 3 unique Tinder image URLs
+2025-04-07 15:31:37 | INFO     | Extracted 5 interests
+2025-04-07 15:31:37 | INFO     | Extracted 3 profile sections
+2025-04-07 15:31:37 | INFO     | Extracted profile data for Olivia
+2025-04-07 15:31:37 | INFO     | Added 3 backup image URLs, total is now 3
+2025-04-07 15:31:37 | INFO     | Processing 3 images
+2025-04-07 15:31:37 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/sMkMT1WoLY6qbUJhoin2ch/ubA5u94RHyWcUBZgn2Ek6T.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS9zTWtNVDFXb0xZNnFiVUpob2luMmNoLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ1OTk3NTZ9fX1dfQ__&Signature=ydzQCXAnnG0Duemtnitg8EoyvGICRR~Hu9BPcxzDzfpWOeTQ8JzRqRYCHLebgb1u31V-PhUQqYiJ9ejlvxJYtXyXuBYY9ohm6xKMlf3cmBd~f243EJ0rzE~3P43nMaLWVib-Gy34l7QsgH~xhQsVzYrnzDBCQ1iNPh57ocbBr4bzKAZZE9mAe-7mkkT88c91l8ZpIbdfitp85Kn1rByTcSLWyj0LrslnYamonwGASPM8XzjmON1~RNXjoZ1SiH6NEVM85doeZzgCKS-7te47zqvRTaJE3KfWb9cuvl--KpqRYKX9EiQbAfLD4Q68L4n1ZeuQVZK9SuJGqS3U4dh94Q__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 15:31:37 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/tacJ5BPKcosv6wnG8iU21G/72HYgJp4CJCtVsBaCzXRbw.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS90YWNKNUJQS2Nvc3Y2d25HOGlVMjFHLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ1OTk3NTZ9fX1dfQ__&Signature=Da2Ln~dg03J45ecaN9D9Nw7h~90uMK9rlmyb0NR~wjNWeFMh3NnUhvTsF2lea50SLR07HrhPcIT149pFdASsKBzpa584yaFOEW2lHwESdka8DYUQ-xCABBoz~ieUbcO0jzjyt-oob1EDQkF07-lDfLpINXLQtiPTlyN6B9BI3NQzOF~q3pO1F9dtPWDeqmLoftm2Yvz-TVn5CBPzohrOalYoK6rGSLSn4FNr4~dCD-yQ2J9o~2iz3lALFt-A4QJBrNJWpGXzTsrdqczd7CAcZi8g8ORiqKNQd5TU1hFv3efcOkIHy7InSuQ~LTMsEhmcXvnXSFszmFqJAuULE5zLGA__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 15:31:37 | WARNING  | Tinder image URL requires authentication, can't download directly: https://images-ssl.gotinder.com/u/7n9gzi6vG29N5Lum8QWnah/8Qa1mRnN9s57iKpmetmC5T.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS83bjlnemk2dkcyOU41THVtOFFXbmFoLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ1OTk3NTZ9fX1dfQ__&Signature=TufBmRZ83uTOq8g3FwH~Lx59pCDNiHB6SWXfUcMNi2JiTiThlXnkn1J45Z7U~Lw~iOWbHHv5S2Lf83MN1OjFsY--vvbPDeLzs7sRl1YReL-FYRKOWHvV~-lGXdKRRfcKRTEthxrnXnye9hdEz8Buzu96pNmUCbHIG2UM5ppEkFzo3bLTNuQcTT7y5Q91lkm9QknQrK3LTGs1CywNljE3yR~swS6GwJ-EyWdpS4MdJg8XCGDexm9SOGTBcrKB9OCtS5ShviKwioda1ThF3~1T1-nUDenwMIDCJKqO7VK1qN9sDfdinAFN9OJfuRfVMT4WL5XTqCYXQjFDPze-7ZzQ3A__&Key-Pair-Id=K368TLDEUPA6OI
+2025-04-07 15:31:38 | INFO     | Saved profile data to ./scraped_profiles/Olivia_1744054297/profile_data.json
+2025-04-07 15:31:38 | INFO     | Created summary at ./scraped_profiles/Olivia_1744054297/summary.txt
+2025-04-07 15:31:38 | INFO     | Downloaded 0 of 3 images
+2025-04-07 15:31:38 | INFO     | Processed data summary:
+2025-04-07 15:31:38 | INFO     |   Name: Olivia
+2025-04-07 15:31:38 | INFO     |   Age: 19
+2025-04-07 15:31:38 | INFO     |   Images: 0/3
+2025-04-07 15:31:38 | INFO     |   Interests: 5
+2025-04-07 15:31:38 | INFO     |   Saved to: ./scraped_profiles/Olivia_1744054297
+2025-04-07 15:31:38 | INFO     | Profile extraction complete. Stopping as requested.
+2025-04-07 15:31:38 | INFO     | Not closing browser since we're using remote debugging
+2025-04-07 15:31:38 | INFO     | Scraper execution completed in 5.63 seconds
+2025-04-07 15:31:38 | INFO     | Successfully scraped 1 profiles

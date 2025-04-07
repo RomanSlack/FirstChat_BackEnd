@@ -61,11 +61,20 @@ def extract_image_urls(html_content):
     """Extract all Tinder image URLs from HTML content."""
     import html
     
-    # First, look for the main profile image which is under "Profile Image 1" label
-    first_image_pattern = r'aria-label="Profile Image 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
-    first_image_match = re.search(first_image_pattern, html_content)
+    # First, look specifically for "Profile Photo 1" which is the main profile image
+    first_image_pattern = r'aria-label="Profile Photo 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+    
+    # Also try alternate pattern "Profile Image 1" as a fallback
+    alt_first_image_pattern = r'aria-label="Profile Image 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
     
     clean_urls = []
+    
+    # Try the first pattern
+    first_image_match = re.search(first_image_pattern, html_content)
+    
+    # If not found, try the alternate pattern
+    if not first_image_match:
+        first_image_match = re.search(alt_first_image_pattern, html_content)
     
     # If we found the first image, add it first
     if first_image_match:
@@ -88,10 +97,10 @@ def extract_image_urls(html_content):
     pattern = r'https://images-ssl\.gotinder\.com/[^"\')\s\\]+'
     
     # Find all matches in the HTML
-    image_urls = re.findall(pattern, html_content)
+    raw_image_urls = re.findall(pattern, html_content)
     
-    # Process each URL
-    for url in image_urls:
+    # Process each URL to clean it
+    for url in raw_image_urls:
         # Remove any trailing characters, quotes, etc.
         url = url.split('\\')[0]
         
@@ -100,14 +109,17 @@ def extract_image_urls(html_content):
         url = url.replace('&quot;', '')
         url = url.replace('&quot', '')
         
+        # Final sanity check to ensure URL is valid
+        if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
+            url = url[:-1]
+            
         # Only add if not already in the list and looks like a valid URL
         if url and url not in clean_urls and 'https://images-ssl.gotinder.com/' in url:
-            # Final sanity check to ensure URL is valid
-            if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
-                url = url[:-1]
             clean_urls.append(url)
     
     logger.info(f"Found {len(clean_urls)} unique image URLs in total")
+    
+    # Return only the cleaned URLs
     return clean_urls
 
 async def process_profile_directory(profile_dir):

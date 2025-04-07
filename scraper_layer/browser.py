@@ -340,54 +340,83 @@ async def extract_images(page: Page) -> List[str]:
     Returns:
         List of image URLs
     """
-    image_urls = []
-    
     try:
-        # This is a much simpler approach that just extracts all Tinder image URLs from the HTML
+        # Get the HTML as the very first step to ensure we capture the page as is
         logger.info("Extracting Tinder image URLs from HTML...")
         html = await page.content()
         
-        # HTML will be saved in the profile folder later
         # Initialize profile_data if needed
         if not hasattr(page, "profile_data"):
             page.profile_data = {}
         
-        # Simple regex pattern to find Tinder image URLs
+        # First, look specifically for "Profile Photo 1" which is the main profile image
+        first_image_pattern = r'aria-label="Profile Photo 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+        
+        # Also try alternate pattern "Profile Image 1" as a fallback
+        alt_first_image_pattern = r'aria-label="Profile Image 1"[^>]*?background-image: url\(&quot;(https://images-ssl\.gotinder\.com/[^&]*)&'
+        
+        clean_urls = []
+        
+        # Try the first pattern
+        first_image_match = re.search(first_image_pattern, html)
+        
+        # If not found, try the alternate pattern
+        if not first_image_match:
+            first_image_match = re.search(alt_first_image_pattern, html)
+        
+        # If we found the first image, extract and clean it
+        if first_image_match:
+            first_url = first_image_match.group(1)
+            # Fix the URL by manually replacing all HTML entities
+            first_url = first_url.replace('&amp;', '&')
+            first_url = first_url.replace('&quot;', '')
+            first_url = first_url.replace('&quot', '')
+            
+            # Final sanity check to ensure URL is valid
+            if first_url.endswith('\\') or first_url.endswith('"') or first_url.endswith("'"):
+                first_url = first_url[:-1]
+                
+            # Make sure first URL is properly formatted with https://
+            if first_url and 'https://images-ssl.gotinder.com/' in first_url:
+                clean_urls.append(first_url)
+                logger.info(f"Found first profile image: {first_url[:60]}...")
+        
+        # Now find all other URLs
         pattern = r'https://images-ssl\.gotinder\.com/[^"\')\s\\]+'
         
         # Find all matches in the HTML
-        matches = re.findall(pattern, html)
+        raw_image_urls = re.findall(pattern, html)
         
-        # Clean up URLs and remove duplicates
-        for url in matches:
-            # Remove any backslash and everything after (helps with escape sequences)
-            url = url.split('\\')[0].replace('"', '').replace("'", "")
-            if url and url not in image_urls:
-                image_urls.append(url)
-        
-        logger.info(f"Found {len(image_urls)} unique Tinder image URLs")
-        
-        # Store the image URLs in the page object for later use but clean them first
-        if image_urls:
-            # Clean all URLs before storing them
-            clean_image_urls = []
-            for url in image_urls:
-                # Fix URL formatting
-                url = url.replace('&amp;', '&').replace('&quot;', '').replace('&quot', '')
-                # Remove any trailing characters
-                if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
-                    url = url[:-1]
-                # Only store valid Tinder URLs
-                if url and 'https://images-ssl.gotinder.com/' in url:
-                    clean_image_urls.append(url)
+        # Process each URL to clean it
+        for url in raw_image_urls:
+            # Remove any trailing characters, quotes, etc.
+            url = url.split('\\')[0]
             
-            page.profile_data["image_urls_backup"] = clean_image_urls
+            # Fix URL by manually replacing all HTML entities
+            url = url.replace('&amp;', '&')
+            url = url.replace('&quot;', '')
+            url = url.replace('&quot', '')
+            
+            # Final sanity check to ensure URL is valid
+            if url.endswith('\\') or url.endswith('"') or url.endswith("'"):
+                url = url[:-1]
+                
+            # Only add if not already in the list and looks like a valid URL
+            if url and url not in clean_urls and 'https://images-ssl.gotinder.com/' in url:
+                clean_urls.append(url)
         
-        return image_urls
+        logger.info(f"Found {len(clean_urls)} unique Tinder image URLs")
+        
+        # Store only the clean URLs in the page object
+        if clean_urls:
+            page.profile_data["image_urls_backup"] = clean_urls
+            
+        # Return the clean URLs only
+        return clean_urls
         
     except Exception as e:
         logger.error(f"Error extracting images: {str(e)}")
-        return image_urls
+        return []
 
 
 async def extract_interests(page: Page) -> List[str]:
