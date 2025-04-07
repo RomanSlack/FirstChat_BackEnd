@@ -346,43 +346,109 @@ async def extract_images(page: Page) -> List[str]:
     image_urls = []
     
     try:
-        # Try to extract images from carousel items (0-4)
-        for i in range(5):  # Tinder typically shows up to 5 images
+        # First try to get background-image style from carousel items
+        for i in range(9):  # Tinder shows up to 9 images
             carousel_selector = config.CAROUSEL_ITEM_SELECTOR.format(i)
             try:
+                # First, look for the carousel item
                 carousel_item = await page.query_selector(carousel_selector)
                 if carousel_item:
-                    # Try to find image within the carousel item
-                    img_element = await carousel_item.query_selector('img')
-                    if img_element:
-                        src = await img_element.get_attribute('src')
-                        if src and not src.startswith('data:'):  # Avoid data URIs
-                            image_urls.append(src)
+                    logger.info(f"Found carousel item {i}")
+                    
+                    # Try to find the div with background-image style inside the carousel item
+                    bg_div = await carousel_item.query_selector('div[class*="Bdrs(8px)"][class*="StretchedBox"]')
+                    if bg_div:
+                        # Get the style attribute
+                        style = await bg_div.get_attribute('style')
+                        if style and 'background-image' in style:
+                            # Extract URL from background-image: url("URL")
+                            url_match = re.search(r'background-image:\s*url\(["\']?(.*?)["\']?\)', style)
+                            if url_match:
+                                image_url = url_match.group(1)
+                                # Remove the quotes that might be in the URL
+                                image_url = image_url.replace('&quot;', '')
+                                if image_url and not image_url.startswith('data:'):
+                                    image_urls.append(image_url)
+                                    logger.info(f"Extracted image URL from carousel item {i} background")
             except Exception as img_err:
                 logger.warning(f"Error extracting image {i}: {str(img_err)}")
         
-        # If we didn't find any images, try with a more general selector
+        # If we didn't get any images from background-image styles, try alternative methods
         if not image_urls:
-            # Try multiple image selectors
-            selectors = [
-                '.keen-slider__slide img',
-                '.tappable-view img',
-                'div[class*="carousel"] img',
-                'img[src*="images-ssl"]'  # Tinder images often have this pattern
-            ]
+            # Take a screenshot of the full page for analysis
+            await page.screenshot(path=os.path.join(config.OUTPUT_DIR, "extract_images_debug.png"))
+            logger.info("Saved debug screenshot for image extraction")
             
-            for selector in selectors:
-                img_elements = await page.query_selector_all(selector)
-                for img in img_elements:
-                    src = await img.get_attribute('src')
-                    if src and not src.startswith('data:') and src not in image_urls:
-                        image_urls.append(src)
+            # Try JavaScript to extract all background images
+            try:
+                bg_images = await page.evaluate("""
+                () => {
+                    const images = [];
+                    // Get all elements with background-image
+                    const elements = document.querySelectorAll('*');
+                    elements.forEach(el => {
+                        const style = window.getComputedStyle(el);
+                        if (style.backgroundImage && style.backgroundImage !== 'none') {
+                            let url = style.backgroundImage.slice(4, -1).replace(/["']/g, "");
+                            if (url && !url.startsWith('data:') && url.includes('images-ssl.gotinder.com')) {
+                                images.push(url);
+                            }
+                        }
+                    });
+                    return [...new Set(images)]; // Remove duplicates
+                }
+                """)
                 
-                if image_urls:
-                    logger.info(f"Found {len(image_urls)} images using selector: {selector}")
-                    break
+                if bg_images:
+                    for url in bg_images:
+                        if url not in image_urls:
+                            image_urls.append(url)
+                    logger.info(f"Extracted {len(image_urls)} background image URLs using JavaScript")
+            except Exception as js_err:
+                logger.warning(f"Error extracting images with JavaScript: {str(js_err)}")
+            
+            # Try to find any <img> tags as a fallback
+            if not image_urls:
+                selectors = [
+                    '.keen-slider__slide img',
+                    '.tappable-view img',
+                    'div[class*="carousel"] img',
+                    'img[src*="images-ssl"]',  # Tinder images often have this pattern
+                    'img'  # Last resort - any image
+                ]
+                
+                for selector in selectors:
+                    img_elements = await page.query_selector_all(selector)
+                    for img in img_elements:
+                        src = await img.get_attribute('src')
+                        if src and not src.startswith('data:') and src not in image_urls:
+                            image_urls.append(src)
+                    
+                    if image_urls:
+                        logger.info(f"Found {len(image_urls)} images using selector: {selector}")
+                        break
         
-        logger.info(f"Extracted {len(image_urls)} image URLs")
+        # Last resort: Try to extract from the raw HTML
+        if not image_urls:
+            html = await page.content()
+            url_matches = re.findall(r'https://images-ssl\.gotinder\.com/[^"\')\s]+', html)
+            for url in url_matches:
+                # Clean up URL - sometimes there might be trailing characters
+                url = url.split('\\')[0]  # Remove any backslash and everything after
+                if url not in image_urls:
+                    image_urls.append(url)
+            logger.info(f"Extracted {len(image_urls)} image URLs from raw HTML")
+            
+        logger.info(f"Total extracted {len(image_urls)} image URLs")
+        
+        # Save the list of URLs to a file for debugging
+        if image_urls:
+            debug_file = os.path.join(config.OUTPUT_DIR, "image_urls.txt")
+            with open(debug_file, 'w') as f:
+                for url in image_urls:
+                    f.write(f"{url}\n")
+            logger.info(f"Saved image URLs to {debug_file}")
+        
         return image_urls
         
     except Exception as e:

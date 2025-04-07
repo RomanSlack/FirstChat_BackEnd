@@ -74,3 +74,55 @@
 2025-04-07 14:11:44 | INFO     | Not closing browser since we're using remote debugging
 2025-04-07 14:11:44 | INFO     | Scraper execution completed in 5.59 seconds
 2025-04-07 14:11:44 | INFO     | Successfully scraped 1 profiles
+2025-04-07 14:22:47 | INFO     | Starting Tinder Profile Scraper
+2025-04-07 14:22:47 | INFO     | Target URL: https://tinder.com/app/recs
+2025-04-07 14:22:47 | INFO     | Output directory: ./scraped_profiles
+2025-04-07 14:22:47 | INFO     | Profiles to scrape: 1
+2025-04-07 14:22:47 | INFO     | Attempting to connect to existing Chrome instance on port 9222
+2025-04-07 14:22:47 | INFO     | Connected to existing browser context
+2025-04-07 14:22:47 | INFO     | Connected to existing page
+2025-04-07 14:22:47 | INFO     | Successfully connected to Chrome with remote debugging
+2025-04-07 14:22:47 | INFO     | Already on Tinder: https://tinder.com/app/recs
+2025-04-07 14:22:48 | INFO     | Saved screenshot to ./scraped_profiles/tinder_screenshot.png
+2025-04-07 14:22:48 | INFO     | Successfully connected to Tinder
+2025-04-07 14:22:48 | INFO     | Processing profile 1/1
+2025-04-07 14:22:49 | INFO     | Navigating to 3rd image... (clicking at 421, 279)
+2025-04-07 14:22:50 | INFO     | Looking for 'Show more' button...
+2025-04-07 14:22:50 | INFO     | Clicked 'Show more' button
+2025-04-07 14:22:50 | INFO     | Looking for 'View all 5' button...
+2025-04-07 14:22:50 | INFO     | Clicked 'View all 5' button
+2025-04-07 14:22:52 | INFO     | Found carousel item 0
+2025-04-07 14:22:52 | INFO     | Found carousel item 1
+2025-04-07 14:22:52 | INFO     | Found carousel item 2
+2025-04-07 14:22:52 | INFO     | Found carousel item 3
+2025-04-07 14:22:52 | INFO     | Found carousel item 4
+2025-04-07 14:22:52 | INFO     | Saved debug screenshot for image extraction
+2025-04-07 14:22:52 | INFO     | Extracted 3 background image URLs using JavaScript
+2025-04-07 14:22:52 | INFO     | Total extracted 3 image URLs
+2025-04-07 14:22:52 | INFO     | Saved image URLs to ./scraped_profiles/image_urls.txt
+2025-04-07 14:22:52 | INFO     | Extracted 5 interests
+2025-04-07 14:22:52 | INFO     | Extracted 3 profile sections
+2025-04-07 14:22:52 | INFO     | Extracted profile data for Jane
+2025-04-07 14:22:52 | INFO     | Processing 3 images
+2025-04-07 14:22:52 | INFO     | Downloading image from https://images-ssl.gotinder.com/u/brMhpiucwENVAZ3yyg1e6e/iNomED5UrwDeWLWekq8QGE.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS9ick1ocGl1Y3dFTlZBWjN5eWcxZTZlLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ2NTIxNjR9fX1dfQ__&Signature=ey8mqpLrTIyttHmlIXoIhsTdLdG6o8w83vWyVjnp6NLVOdi36g6xLh4kSrbu1X0KILU-ae1xFxqR8MRfowITeX4zqqt3LlD-ND8KG8S-6CW5QRqLdsV2E9BZyNvcaFyCdy3NA4ZV3SldeI0VGl0FOyEZ5~ow2cC7z5QUpQq0dDsE2nwxq41KCHfDly~mTx1613g02aM7OaIs53616bL-gcPFFQ7u~6rsdxbEwP6PJRMhRLHXY8aQrkhqV-NrBqlTCxjiex8RVo3PYhgWAWSLBny3btWcIw2aGfJtEEC5e8DhXZMQQN59rfRBq2CqhAAZ-gP0V5Sai4Tsp9K5hAT0wA__&Key-Pair-Id=K368TLDEUPA6OI (attempt 1/3)
+2025-04-07 14:22:52 | INFO     | Downloading image from https://images-ssl.gotinder.com/u/8EsAvzrutXsxeo929oiTpg/dw2ZKipABCvUz9ErXV2Poh.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS84RXNBdnpydXRYc3hlbzkyOW9pVHBnLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ2NTIxNjR9fX1dfQ__&Signature=kg3v27PE0a~~YqtFjAEcEcMEW9HvqgrLcoT6ETYJNcgkqrgIcgPIZdEZI~~zfpKh83fQh9RP~s2~OE5fTAgnPmZ9hJL3zC7MOw0TX~wtl6Xq6a5XMgYdswj-SUGtvaz1QrD69HpeoCBdAkgUSxwkDL-fZCfC8dApPbsnLLLiQHAWIkyFaxuoLzbsMqItwiPZqywk4qDagFuWla748lJwE1~QnWSwL58Csp6NMIP0zct0L5m6tdhwmRvrwNVYzARTVL-TGvDW7jqL3eaIPiTVR0vKWIj0MfT~exvqQKSgavEMOVwEtBGKO6AFlO2OsjCsSNZRVyY83DirHJwBEvu5Cg__&Key-Pair-Id=K368TLDEUPA6OI (attempt 1/3)
+2025-04-07 14:22:52 | INFO     | Downloading image from https://images-ssl.gotinder.com/u/qKTr8MJ3b5EhEceoiF9RtV/3czkRk3fuywwGPAKjxryaB.webp?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6IiovdS9xS1RyOE1KM2I1RWhFY2VvaUY5UnRWLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NDQ2NTIxNjR9fX1dfQ__&Signature=nh7svc0tTmvT~oqlGUH41NB5-fz-yP84Ig6APMaW9dpDKVAvlLAXM7iQ6~xsJQr2mWSfz4NgNFx86PhvoniTvyfO2yLfRGBtS~YLEayx1BjY0alX7~cOyXhinLrqESPTBYYqZE0Cw8xhoCjFak9-rUvw4PG8uKIRnn5n5ut3oz-v3MvnHlaNTTCdvoY3p0nO0~Dh2SH-K6ZMisFaGGEylkgHedGMg5GW11sKHOHQTR3j7PAQKt0CInI9QSetd5OpAZwbxc6-GD3uOLCiZhbMfq3hmMGuolg8uoGNUofHr-8UOleKCv3gM3kRljk0sy1HkyFzBTHcxzXcKxYME4AK5w__&Key-Pair-Id=K368TLDEUPA6OI (attempt 1/3)
+2025-04-07 14:22:53 | INFO     | Downloaded image to ./scraped_profiles/Jane_1744050172/image_2.webp (83852 bytes)
+2025-04-07 14:22:53 | INFO     | Downloaded image to ./scraped_profiles/Jane_1744050172/image_1.webp (40948 bytes)
+2025-04-07 14:22:53 | INFO     | Downloaded image to ./scraped_profiles/Jane_1744050172/image_0.webp (106978 bytes)
+2025-04-07 14:22:53 | INFO     | Successfully downloaded image 0
+2025-04-07 14:22:53 | INFO     | Successfully downloaded image 1
+2025-04-07 14:22:53 | INFO     | Successfully downloaded image 2
+2025-04-07 14:22:53 | INFO     | Saved profile data to ./scraped_profiles/Jane_1744050172/profile_data.json
+2025-04-07 14:22:53 | INFO     | Created summary at ./scraped_profiles/Jane_1744050172/summary.txt
+2025-04-07 14:22:53 | INFO     | Downloaded 3 of 3 images
+2025-04-07 14:22:53 | INFO     | Processed data summary:
+2025-04-07 14:22:53 | INFO     |   Name: Jane
+2025-04-07 14:22:53 | INFO     |   Age: 19
+2025-04-07 14:22:53 | INFO     |   Images: 3/3
+2025-04-07 14:22:53 | INFO     |   Interests: 5
+2025-04-07 14:22:53 | INFO     |   Saved to: ./scraped_profiles/Jane_1744050172
+2025-04-07 14:22:53 | INFO     | Profile extraction complete. Stopping as requested.
+2025-04-07 14:22:53 | INFO     | Not closing browser since we're using remote debugging
+2025-04-07 14:22:53 | INFO     | Scraper execution completed in 6.75 seconds
+2025-04-07 14:22:53 | INFO     | Successfully scraped 1 profiles
