@@ -158,6 +158,11 @@ def parse_args():
         type=str, 
         help="Path to Chrome profile directory"
     )
+    parser.add_argument(
+        "--chrome-path", 
+        type=str, 
+        help="Path to Chrome executable"
+    )
     return parser.parse_args()
 
 
@@ -171,6 +176,8 @@ def main():
         config.HEADLESS = True
     if args.chrome_profile:
         config.CHROME_PROFILE_PATH = args.chrome_profile
+    if args.chrome_path:
+        config.CHROME_EXECUTABLE_PATH = args.chrome_path
     
     # Set up logger
     setup_logger()
@@ -197,17 +204,45 @@ def run_interactive():
         delay = 0 # Not used since we're only scraping one profile
         
         chrome_profile = None
+        chrome_executable = None
+        
         if use_chrome:
             chrome_profile = input("Enter Chrome profile path: ")
+            specify_chrome_executable = input("Specify Chrome executable path? (y/N): ").lower() == 'y'
+            
+            if specify_chrome_executable:
+                # Find Chrome path
+                import subprocess
+                try:
+                    # Try to find Chrome executable with 'which' command
+                    chrome_path = subprocess.check_output(["which", "google-chrome"], 
+                                                          stderr=subprocess.STDOUT, 
+                                                          universal_newlines=True).strip()
+                    print(f"Found Chrome at: {chrome_path}")
+                except subprocess.CalledProcessError:
+                    chrome_path = ""
+                
+                if not chrome_path:
+                    print("Couldn't automatically find Chrome executable")
+                    print("Common locations:")
+                    print("  - Linux: /usr/bin/google-chrome or /usr/bin/chromium-browser")
+                    print("  - macOS: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+                    print("  - Windows: C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe")
+                
+                chrome_executable = input("Enter Chrome executable path: ")
         
         # Update config
         config.HEADLESS = headless
         if chrome_profile:
             config.CHROME_PROFILE_PATH = chrome_profile
+        if chrome_executable:
+            config.CHROME_EXECUTABLE_PATH = chrome_executable
         
         print("\nStarting scraper with the following settings:")
         print(f"- Headless mode: {'Yes' if headless else 'No'}")
         print(f"- Chrome profile: {'Yes' if chrome_profile else 'No'}")
+        if chrome_executable:
+            print(f"- Chrome executable: {chrome_executable}")
         print(f"- Output directory: {config.OUTPUT_DIR}")
         print("\nThe scraper will extract ONE profile only and then stop.")
         print("Press Ctrl+C to stop at any time\n")

@@ -34,9 +34,52 @@ async def initialize_browser(playwright: Playwright) -> Tuple[Browser, BrowserCo
     if config.CHROME_PROFILE_PATH:
         # Use existing Chrome profile if path is provided
         logger.info(f"Using Chrome profile from: {config.CHROME_PROFILE_PATH}")
+        
+        # Find Chrome executable path
+        chrome_executable = config.CHROME_EXECUTABLE_PATH
+        if not chrome_executable or not os.path.exists(chrome_executable):
+            # Default to standard locations if not specified
+            chrome_executable = "/usr/bin/google-chrome"  # Default on Ubuntu
+            if not os.path.exists(chrome_executable):
+                # Try alternative locations
+                alternatives = [
+                    "/usr/bin/google-chrome-stable",
+                    "/usr/bin/chromium-browser",
+                    "/usr/bin/chromium",
+                    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",  # macOS
+                    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",  # Windows
+                    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"  # Windows (32-bit)
+                ]
+                for alt in alternatives:
+                    if os.path.exists(alt):
+                        chrome_executable = alt
+                        break
+        
+        if not chrome_executable or not os.path.exists(chrome_executable):
+            raise FileNotFoundError("Could not find Chrome executable. Please specify it with CHROME_EXECUTABLE_PATH.")
+            
+        logger.info(f"Using Chrome executable: {chrome_executable}")
+        
+        # Launch browser with persistent context using the specific Chrome executable
         browser = await playwright.chromium.launch_persistent_context(
             user_data_dir=config.CHROME_PROFILE_PATH,
+            executable_path=chrome_executable,
             headless=config.HEADLESS,
+            args=[
+                f'--user-data-dir={config.CHROME_PROFILE_PATH}',
+                '--no-first-run',
+                '--no-default-browser-check',
+                '--disable-extensions-except=',
+                '--disable-infobars',
+                '--user-agent=' + config.USER_AGENT,
+                # Mobile emulation
+                '--enable-features=UseOzonePlatform',
+                '--ozone-platform=headless',
+                # Add more flags as needed
+            ],
+            ignore_default_args=['--enable-automation'],  # Don't show the automation notice
+            viewport={"width": 430, "height": 932},
+            device_scale_factor=3,
         )
         context = browser
     else:
@@ -74,6 +117,18 @@ async def initialize_browser(playwright: Playwright) -> Tuple[Browser, BrowserCo
     # Create a new page
     page = await context.new_page()
     
+    # Enable mobile emulation if using chrome profile
+    if config.CHROME_PROFILE_PATH:
+        await page.evaluate("""
+        () => {
+            // Attempt to trigger mobile view if not already active
+            const meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+            document.getElementsByTagName('head')[0].appendChild(meta);
+        }
+        """)
+    
     return browser, context, page
 
 
@@ -100,8 +155,15 @@ async def navigate_to_tinder(page: Page) -> bool:
         bool: True if navigation was successful, False otherwise
     """
     try:
-        logger.info(f"Navigating to {config.TARGET_URL}")
-        await page.goto(config.TARGET_URL, timeout=config.PAGE_LOAD_TIMEOUT)
+        # Add a parameter to try to force mobile view
+        target_url = config.TARGET_URL
+        if "?" in target_url:
+            target_url += "&go-mobile=1"
+        else:
+            target_url += "?go-mobile=1"
+            
+        logger.info(f"Navigating to {target_url}")
+        await page.goto(target_url, timeout=config.PAGE_LOAD_TIMEOUT)
         
         # Wait for main content to load
         await page.wait_for_load_state("networkidle")
@@ -111,6 +173,63 @@ async def navigate_to_tinder(page: Page) -> bool:
             logger.warning("Login required - please use a Chrome profile that's already logged in to Tinder")
             return False
             
+        # Try to emulate an iPhone
+        try:
+            # Enable Chrome DevTools Protocol and use it to enable device emulation
+            client = await page.context.new_cdp_session(page)
+            
+            # iPhone 14 Pro Max configuration
+            await client.send('Emulation.setDeviceMetricsOverride', {
+                'mobile': True,
+                'width': 430,
+                'height': 932,
+                'deviceScaleFactor': 3,
+                'screenOrientation': {'type': 'portraitPrimary', 'angle': 0}
+            })
+            
+            # Set user agent to iPhone
+            await client.send('Network.setUserAgentOverride', {
+                'userAgent': config.USER_AGENT
+            })
+            
+            logger.info("Enabled device emulation via CDP")
+        except Exception as e:
+            logger.warning(f"Could not use CDP for device emulation: {str(e)}")
+            
+            # Fallback to JavaScript approach
+            await page.evaluate("""
+            () => {
+                // Force mobile view if not already
+                if (typeof navigator.userAgent !== 'undefined') {
+                    // Create and add mobile viewport meta tag
+                    const meta = document.createElement('meta');
+                    meta.name = 'viewport';
+                    meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+                    document.head.appendChild(meta);
+                    
+                    // Add mobile class if needed
+                    document.documentElement.classList.add('mobile');
+                    
+                    // Try to modify navigator.userAgent (may not work in all browsers)
+                    try {
+                        Object.defineProperty(navigator, 'userAgent', {
+                            get: function() { 
+                                return 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1'; 
+                            }
+                        });
+                    } catch (e) {
+                        console.error('Failed to override userAgent', e);
+                    }
+                }
+            }
+            """)
+        
+        # Take a screenshot for debugging (optional)
+        if not config.HEADLESS:
+            screenshot_path = os.path.join(config.OUTPUT_DIR, "tinder_screenshot.png")
+            await page.screenshot(path=screenshot_path)
+            logger.info(f"Saved screenshot to {screenshot_path}")
+        
         logger.info("Successfully navigated to Tinder")
         return True
         

@@ -54,12 +54,13 @@ The script will prompt you for:
 You can also run the script with command line arguments:
 
 ```bash
-python main.py --chrome-profile "/path/to/chrome/profile"
+python main.py --chrome-profile "/path/to/chrome/profile" --chrome-path "/path/to/chrome"
 ```
 
 Available options:
 - `--headless`: Run in headless mode (no browser UI)
 - `--chrome-profile`: Path to Chrome profile directory
+- `--chrome-path`: Path to Chrome executable
 
 ### Chrome Profile
 
