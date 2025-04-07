@@ -96,23 +96,26 @@ async def run_scraper() -> None:
             logger.info(f"  Interests: {len(processed_data['match_bio']['interests'])}")
             logger.info(f"  Images: {2 if 'image2' in processed_data else 1}")
             
-            # Send data to API
-            api_response = await send_to_api(processed_data)
-            
-            # Display formatted response
-            formatted_response = format_api_response(api_response)
-            print("\n" + "=" * 50)
-            print(formatted_response)
-            print("=" * 50 + "\n")
-            
-            # Save the response to a file
+            # Skip API call and just save the data to file
             output_dir = "output"
             os.makedirs(output_dir, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_file = f"{output_dir}/response_{timestamp}.json"
+            output_file = f"{output_dir}/scraped_data_{timestamp}.json"
+            
+            # Display extracted data summary
+            print("\n" + "=" * 50)
+            print(f"Profile data scraped successfully:")
+            print(f"Name: {processed_data['match_bio']['name']}")
+            print(f"Age: {processed_data['match_bio'].get('age', 'N/A')}")
+            print(f"Bio: {processed_data['match_bio']['bio'][:100]}...")
+            print(f"Interests: {', '.join(processed_data['match_bio']['interests'][:5])}")
+            print(f"Images: {2 if 'image2' in processed_data else 1}")
+            print("=" * 50 + "\n")
             
             with open(output_file, 'w') as f:
-                json.dump(api_response, f, indent=2)
+                json.dump(processed_data, f, indent=2)
+                
+            logger.info(f"Scraped data saved to {output_file}")
             
             logger.info(f"Response saved to {output_file}")
             
