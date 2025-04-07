@@ -124,63 +124,115 @@ async def navigate_to_tinder(page: Page) -> bool:
 async def interact_with_profile(page: Page) -> bool:
     """
     Interact with a Tinder profile to expand details.
-    Image navigation is now handled separately in extract_images function.
+    Image navigation is handled separately in extract_images.
+
+    This updated version attempts to locate the "Show more" button.
+    If not found on the current (target) slide, it iterates over all slides
+    (by tapping left/right based on stored indices) until the button is found.
+    If it still isn’t found, it logs a warning and continues.
 
     Args:
         page: Playwright page object
 
     Returns:
-        bool: True if interaction was successful, False otherwise
+        bool: True if interaction (or fallback) was successful, False otherwise.
     """
     try:
         await asyncio.sleep(1)
         if not hasattr(page, "profile_data"):
             page.profile_data = {}
-        try:
-            logger.info("Looking for 'Show more' button...")
-            show_more_button = await page.query_selector(config.SHOW_MORE_SELECTOR)
-            if show_more_button:
-                await show_more_button.click()
-                logger.info("Clicked 'Show more' button")
-                await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
-            else:
-                logger.info("Trying alternative selector for 'Show more' button...")
-                alt_buttons = await page.query_selector_all('div:has-text("Show more")')
-                if alt_buttons:
-                    for button in alt_buttons:
-                        class_name = await button.get_attribute('class')
-                        if class_name and ('button' in class_name.lower() or 'btn' in class_name.lower() or 'Bd' in class_name):
-                            await button.click()
-                            logger.info("Clicked alternative 'Show more' button")
-                            await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
-                            break
-                else:
-                    logger.warning("Could not find any 'Show more' button")
-        except Exception as e:
-            logger.warning(f"Could not find or click 'Show more' button: {str(e)}")
-        try:
-            logger.info("Looking for 'View all' button...")
-            view_all_button = await page.query_selector(config.VIEW_ALL_SELECTOR)
-            if view_all_button:
-                await view_all_button.click()
-                logger.info("Clicked 'View all' button")
-                await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
-            else:
-                logger.info("Trying alternative selector for 'View all' button...")
-                alt_buttons = await page.query_selector_all('div:has-text("View all")')
-                if alt_buttons:
-                    for button in alt_buttons:
-                        has_svg = await button.query_selector('svg')
-                        if has_svg:
-                            await button.click()
-                            logger.info("Clicked alternative 'View all' button")
-                            await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
-                            break
-                else:
-                    logger.warning("Could not find any 'View all' button")
-        except Exception as e:
-            logger.warning(f"Could not find or click 'View all' button: {str(e)}")
-        await asyncio.sleep(1)
+
+        # First, try the standard selector on the current slide.
+        logger.info("Looking for 'Show more' button on current slide...")
+        show_more_button = await page.query_selector(config.SHOW_MORE_SELECTOR)
+        if show_more_button:
+            await show_more_button.click()
+            logger.info("Clicked 'Show more' button on current slide.")
+            await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
+            return True
+
+        # If not found, attempt to search other slides.
+        logger.info("No 'Show more' button on current slide. Searching other slides...")
+
+        # Get tap positions.
+        const_screen_width = await page.evaluate("window.innerWidth")
+        const_screen_height = await page.evaluate("window.innerHeight")
+        right_tap_x = int(const_screen_width * 0.8)  # tap on right 80% of screen width
+        left_tap_x = int(const_screen_width * 0.2)  # tap on left 20% of screen width
+        tap_y = int(const_screen_height * 0.5)  # vertically centered
+
+        # Retrieve total slides and target slide from profile_data, or compute them.
+        total_slides = page.profile_data.get("total_slides")
+        target_slide = page.profile_data.get("target_slide", 2)  # default to slide index 2 (3rd slide)
+        if total_slides is None:
+            total_slides = await page.evaluate('''() => {
+                const container = document.querySelector('div[data-keyboard-gamepad="true"][aria-hidden="false"]');
+                return container ? container.querySelectorAll('.keen-slider__slide').length : 0;
+            }''')
+            page.profile_data["total_slides"] = total_slides
+
+        # Get current slide index (assumes the visible slide has aria-hidden="false")
+        current_index = await page.evaluate('''() => {
+            const container = document.querySelector('div[data-keyboard-gamepad="true"][aria-hidden="false"]');
+            if (!container) return -1;
+            const slides = container.querySelectorAll('.keen-slider__slide');
+            for (let i = 0; i < slides.length; i++) {
+                if (slides[i].getAttribute("aria-hidden") === "false") {
+                    return i;
+                }
+            }
+            return -1;
+        }''')
+        if current_index == -1:
+            current_index = target_slide  # fallback
+
+        original_index = current_index
+        # Order indices by closeness to the target slide.
+        indices = list(range(total_slides))
+        indices.sort(key=lambda i: abs(i - target_slide))
+
+        found = False
+        for idx in indices:
+            if idx == current_index:
+                # Check current slide.
+                button = await page.query_selector(config.SHOW_MORE_SELECTOR)
+                if button:
+                    await button.click()
+                    logger.info(f"Found 'Show more' button on slide {idx}.")
+                    found = True
+                    break
+                continue
+            # Determine number of taps required.
+            diff = idx - current_index
+            if diff > 0:
+                for _ in range(diff):
+                    await page.mouse.click(right_tap_x, tap_y)
+                    await asyncio.sleep(1.0)
+            elif diff < 0:
+                for _ in range(-diff):
+                    await page.mouse.click(left_tap_x, tap_y)
+                    await asyncio.sleep(1.0)
+            current_index = idx
+            button = await page.query_selector(config.SHOW_MORE_SELECTOR)
+            if button:
+                await button.click()
+                logger.info(f"Found 'Show more' button on slide {idx}.")
+                found = True
+                break
+
+        # Return to original slide.
+        diff = original_index - current_index
+        if diff > 0:
+            for _ in range(diff):
+                await page.mouse.click(right_tap_x, tap_y)
+                await asyncio.sleep(1.0)
+        elif diff < 0:
+            for _ in range(-diff):
+                await page.mouse.click(left_tap_x, tap_y)
+                await asyncio.sleep(1.0)
+
+        if not found:
+            logger.warning("Could not find 'Show more' button on any slide; proceeding with unknown details.")
         return True
     except Exception as e:
         logger.error(f"Error during profile interaction: {str(e)}")
