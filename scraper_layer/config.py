@@ -28,8 +28,12 @@ class TinderConfig(BaseSettings):
     HEADLESS: bool = os.getenv("HEADLESS", "False").lower() == "true"
     USER_AGENT: str = os.getenv("USER_AGENT", "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1")
     DEVICE_NAME: str = os.getenv("DEVICE_NAME", "iPhone 14 Pro Max")
-    CHROME_PROFILE_PATH: Optional[str] = os.getenv("CHROME_PROFILE_PATH", None)
-    CHROME_EXECUTABLE_PATH: Optional[str] = os.getenv("CHROME_EXECUTABLE_PATH", None)
+    CHROME_PROFILE_PATH: Optional[str] = os.getenv("CHROME_PROFILE_PATH", "/home/roman-slack/.config/google-chrome/Profile 4") # Default to Profile 4
+    CHROME_EXECUTABLE_PATH: Optional[str] = os.getenv("CHROME_EXECUTABLE_PATH", "/usr/bin/google-chrome") 
+    
+    # Chrome Remote Debugging
+    USE_REMOTE_CHROME: bool = os.getenv("USE_REMOTE_CHROME", "True").lower() == "true"
+    REMOTE_DEBUGGING_PORT: int = int(os.getenv("REMOTE_DEBUGGING_PORT", "9222"))
     
     # Timeout values (in milliseconds)
     PAGE_LOAD_TIMEOUT: int = int(os.getenv("PAGE_LOAD_TIMEOUT", "30000"))

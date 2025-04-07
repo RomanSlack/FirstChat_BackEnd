@@ -2,7 +2,8 @@
 Browser interaction module for Tinder Profile Scraper.
 
 This module provides utilities for browser automation using Playwright,
-including session persistence, device emulation, and profile data extraction.
+including connecting to existing Chrome instances, device emulation,
+and profile data extraction.
 """
 
 import os
@@ -12,7 +13,6 @@ import time
 import json
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
-import urllib.request
 
 from playwright.async_api import async_playwright, Browser, Page, BrowserContext, Playwright
 from loguru import logger
@@ -20,90 +20,10 @@ from loguru import logger
 from config import config
 
 
-async def extract_cookies_from_chrome(profile_path: str) -> Optional[List[Dict[str, Any]]]:
-    """
-    Extract cookies from Chrome profile for specific domains.
-    
-    Args:
-        profile_path: Path to Chrome profile directory
-        
-    Returns:
-        List of cookies or None if extraction failed
-    """
-    try:
-        # Path to Chrome cookies database
-        cookies_db = os.path.join(profile_path, "Cookies")
-        cookies_db_copy = os.path.join(profile_path, "Cookies.copy")
-        
-        # Check if the cookies file exists
-        if not os.path.exists(cookies_db):
-            logger.error(f"Cookies database not found at: {cookies_db}")
-            return None
-            
-        # We need to make a copy of the database since Chrome might have it locked
-        import shutil
-        try:
-            shutil.copy2(cookies_db, cookies_db_copy)
-        except Exception as e:
-            logger.error(f"Failed to copy cookies database: {str(e)}")
-            return None
-            
-        # Try to extract cookies using sqlite3
-        try:
-            import sqlite3
-            import time
-            from datetime import datetime
-            
-            # Connect to the database
-            conn = sqlite3.connect(cookies_db_copy)
-            cursor = conn.cursor()
-            
-            # Query cookies for specific domains related to Tinder
-            cursor.execute(
-                "SELECT host_key, name, value, path, expires_utc, is_secure, is_httponly "
-                "FROM cookies WHERE host_key LIKE '%tinder.com%'"
-            )
-            
-            cookies = []
-            for row in cursor.fetchall():
-                host, name, value, path, expires, secure, httponly = row
-                # Convert Chrome's expiry format to timestamp
-                expires_timestamp = int(expires / 1000000) - 11644473600
-                
-                cookie = {
-                    "name": name,
-                    "value": value,
-                    "domain": host,
-                    "path": path,
-                    "expires": expires_timestamp,
-                    "secure": bool(secure),
-                    "httpOnly": bool(httponly)
-                }
-                cookies.append(cookie)
-                
-            logger.info(f"Extracted {len(cookies)} cookies from Chrome profile")
-            return cookies
-            
-        except Exception as sqlite_err:
-            logger.error(f"Failed to extract cookies from database: {str(sqlite_err)}")
-            return None
-            
-        finally:
-            # Clean up the copy
-            try:
-                if os.path.exists(cookies_db_copy):
-                    os.remove(cookies_db_copy)
-            except:
-                pass
-    
-    except Exception as e:
-        logger.error(f"Error extracting cookies from Chrome profile: {str(e)}")
-        return None
-
-
 async def initialize_browser(playwright: Playwright) -> Tuple[Browser, BrowserContext, Page]:
     """
     Initialize browser with Playwright for Tinder scraping.
+    Either connects to an existing Chrome instance or launches a new one.
     
     Args:
         playwright: Playwright instance
@@ -111,172 +31,73 @@ async def initialize_browser(playwright: Playwright) -> Tuple[Browser, BrowserCo
     Returns:
         Tuple containing Browser, BrowserContext, and Page objects
     """
-    # Find Chrome executable path if specified
-    chrome_executable = config.CHROME_EXECUTABLE_PATH
-    if chrome_executable and not os.path.exists(chrome_executable):
-        # Default to standard locations if specified but doesn't exist
-        chrome_executable = None
+    try:
+        if config.USE_REMOTE_CHROME:
+            # Connect to an existing Chrome instance running with remote debugging
+            # This expects Chrome to be started with:
+            # google-chrome --remote-debugging-port=9222 --user-data-dir=/path/to/profile
+            
+            logger.info(f"Attempting to connect to existing Chrome instance on port {config.REMOTE_DEBUGGING_PORT}")
+            
+            try:
+                # Connect to the browser
+                browser = await playwright.chromium.connect_over_cdp(f"http://localhost:{config.REMOTE_DEBUGGING_PORT}")
+                
+                # Get all browser contexts
+                contexts = browser.contexts
+                if not contexts:
+                    logger.warning("No contexts found in the connected browser. Creating a new one.")
+                    context = await browser.new_context()
+                else:
+                    # Use the first context
+                    context = contexts[0]
+                    logger.info("Connected to existing browser context")
+                
+                # Get all pages or create a new one
+                pages = context.pages
+                if not pages:
+                    logger.info("No pages found in the context. Creating a new one.")
+                    page = await context.new_page()
+                else:
+                    # Use the first page
+                    page = pages[0]
+                    logger.info("Connected to existing page")
+                
+                logger.info("Successfully connected to Chrome with remote debugging")
+                
+                return browser, context, page
+                
+            except Exception as e:
+                logger.error(f"Failed to connect to Chrome with remote debugging: {str(e)}")
+                logger.info("Please run './launch_chrome.sh' first to start Chrome with remote debugging")
+                logger.info("Falling back to launching a new browser instance")
+                raise
         
-    if not chrome_executable:
-        # Try to find Chrome executable in standard locations
-        chrome_executable = "/usr/bin/google-chrome"  # Default on Ubuntu
-        if not os.path.exists(chrome_executable):
-            # Try alternative locations
-            alternatives = [
-                "/usr/bin/google-chrome-stable",
-                "/usr/bin/chromium-browser",
-                "/usr/bin/chromium",
-                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",  # macOS
-                "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",  # Windows
-                "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"  # Windows (32-bit)
-            ]
-            for alt in alternatives:
-                if os.path.exists(alt):
-                    chrome_executable = alt
-                    break
-    
-    # Launch browser with appropriate settings
-    if config.CHROME_PROFILE_PATH:
-        # Use existing Chrome profile if path is provided
-        logger.info(f"Using Chrome profile from: {config.CHROME_PROFILE_PATH}")
-        logger.info(f"Using Chrome executable: {chrome_executable or 'Default'}")
+        # If we're here, either USE_REMOTE_CHROME is False or connecting to remote Chrome failed
         
-        # Try alternative approach: Launch browser normally, then load cookies from profile
-        try:
-            # Launch browser without persistent context
-            browser = await playwright.chromium.launch(
-                executable_path=chrome_executable if chrome_executable else None,
-                headless=config.HEADLESS,
-                args=[
-                    '--no-first-run',
-                    '--no-default-browser-check',
-                    '--disable-extensions-except=',
-                    '--disable-infobars',
-                    # Mobile emulation parameters
-                    '--force-device-scale-factor=3',
-                    '--force-mobile',
-                ],
-                ignore_default_args=['--enable-automation'],
-            )
-            
-            # Create mobile device context
-            iphone = playwright.devices['iPhone 12 Pro Max']
-            context = await browser.new_context(**iphone)
-            
-            # Extract cookies from Chrome profile and add them to the context
-            cookies = await extract_cookies_from_chrome(config.CHROME_PROFILE_PATH)
-            if cookies:
-                # Add cookies to the context
-                await context.add_cookies(cookies)
-                logger.info(f"Added {len(cookies)} cookies from Chrome profile")
-            else:
-                logger.warning("Failed to extract cookies from Chrome profile")
+        logger.info("Launching a new browser instance")
+        logger.info(f"Using Chrome profile: {config.CHROME_PROFILE_PATH}")
         
-        except Exception as e:
-            logger.error(f"Failed to create context with cookies: {str(e)}")
-            logger.info("Falling back to direct profile access")
-            
-            # Fallback: launch with persistent context
-            # Launch browser with persistent context using the specific Chrome executable
-            browser = await playwright.chromium.launch_persistent_context(
-                user_data_dir=config.CHROME_PROFILE_PATH,
-                executable_path=chrome_executable if chrome_executable else None,
-                headless=config.HEADLESS,
-                args=[
-                    # Do NOT specify --user-data-dir here - it's already provided as the user_data_dir parameter
-                    '--no-first-run',
-                    '--no-default-browser-check',
-                    '--disable-extensions-except=',
-                    '--disable-infobars',
-                    '--user-agent=' + config.USER_AGENT,
-                    # Mobile emulation parameters
-                    '--force-device-scale-factor=3',
-                    '--force-mobile',
-                    '--enable-viewport',
-                ],
-                ignore_default_args=['--enable-automation'],
-                viewport={"width": 430, "height": 932},
-                device_scale_factor=3,
-            )
-            context = browser
-    else:
-        # Create session storage directory if it doesn't exist
-        os.makedirs(config.SESSION_STORAGE_DIR, exist_ok=True)
-        session_path = Path(config.SESSION_STORAGE_DIR) / "dating_app_session"
+        # Launch a new browser instance with iPhone device emulation
+        browser = await playwright.chromium.launch(
+            headless=config.HEADLESS,
+            executable_path=config.CHROME_EXECUTABLE_PATH,
+        )
         
-        # Launch browser with appropriate settings
-        browser = await playwright.chromium.launch(headless=config.HEADLESS)
+        # Create a new context with iPhone emulation
+        iphone = playwright.devices['iPhone 12 Pro Max']
+        context = await browser.new_context(**iphone)
         
-        # Create a persistent context if session storage exists
-        if session_path.exists():
-            logger.info("Loading existing browser session")
-            context = await browser.new_context(
-                user_agent=config.USER_AGENT,
-                storage_state=str(session_path),
-                viewport={"width": 430, "height": 932},
-                device_scale_factor=3,
-                is_mobile=True,
-            )
-        else:
-            logger.info("Creating new browser session")
-            # Create context with mobile emulation
-            context = await browser.new_context(
-                user_agent=config.USER_AGENT,
-                viewport={"width": 430, "height": 932},
-                device_scale_factor=3,
-                is_mobile=True,
-            )
-    
-    # Configure timeouts
-    context.set_default_navigation_timeout(config.NAVIGATION_TIMEOUT)
-    context.set_default_timeout(config.ELEMENT_TIMEOUT)
-    
-    # Create a new page
-    page = await context.new_page()
-    
-    # Try to enable mobile emulation explicitly using CDP
-    if config.CHROME_PROFILE_PATH:
-        try:
-            # Create a CDP session
-            cdp_client = await context.new_cdp_session(page)
-            
-            # Configure mobile emulation
-            await cdp_client.send('Emulation.setDeviceMetricsOverride', {
-                'mobile': True,
-                'width': 430,
-                'height': 932,
-                'deviceScaleFactor': 3.0,
-                'screenOrientation': {'type': 'portraitPrimary', 'angle': 0}
-            })
-            
-            # Set mobile user agent
-            await cdp_client.send('Emulation.setUserAgentOverride', {
-                'userAgent': config.USER_AGENT,
-                'platform': 'iPhone'
-            })
-            
-            # Force touch support
-            await cdp_client.send('Emulation.setTouchEmulationEnabled', {
-                'enabled': True,
-                'maxTouchPoints': 5
-            })
-            
-            logger.info("Successfully enabled mobile emulation via CDP")
-        except Exception as e:
-            logger.warning(f"Failed to set up CDP device emulation: {str(e)}")
-            
-            # Fall back to JavaScript approach
-            await page.evaluate("""
-            () => {
-                // Attempt to trigger mobile view if not already active
-                const meta = document.createElement('meta');
-                meta.name = 'viewport';
-                meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-                document.getElementsByTagName('head')[0].appendChild(meta);
-            }
-            """)
-    
-    return browser, context, page
+        # Create a new page
+        page = await context.new_page()
+        
+        logger.info("Successfully launched a new browser with mobile emulation")
+        
+        return browser, context, page
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize browser: {str(e)}")
+        raise
 
 
 async def save_session(context: BrowserContext) -> None:
@@ -302,82 +123,37 @@ async def navigate_to_tinder(page: Page) -> bool:
         bool: True if navigation was successful, False otherwise
     """
     try:
-        # Add a parameter to try to force mobile view
-        target_url = config.TARGET_URL
-        if "?" in target_url:
-            target_url += "&go-mobile=1"
+        # Check if we're already on Tinder
+        current_url = page.url
+        if "tinder.com" in current_url:
+            logger.info(f"Already on Tinder: {current_url}")
+            # Wait for main content to load just in case
+            await page.wait_for_load_state("networkidle")
         else:
-            target_url += "?go-mobile=1"
+            # Add a parameter to try to force mobile view
+            target_url = config.TARGET_URL
+            if "?" in target_url:
+                target_url += "&go-mobile=1"
+            else:
+                target_url += "?go-mobile=1"
+                
+            logger.info(f"Navigating to {target_url}")
+            await page.goto(target_url, timeout=config.PAGE_LOAD_TIMEOUT)
             
-        logger.info(f"Navigating to {target_url}")
-        await page.goto(target_url, timeout=config.PAGE_LOAD_TIMEOUT)
-        
-        # Wait for main content to load
-        await page.wait_for_load_state("networkidle")
+            # Wait for main content to load
+            await page.wait_for_load_state("networkidle")
         
         # Check if we need to log in
         if await page.is_visible('text="Log in"'):
             logger.warning("Login required - please use a Chrome profile that's already logged in to Tinder")
             return False
-            
-        # Try to emulate an iPhone
-        try:
-            # Enable Chrome DevTools Protocol and use it to enable device emulation
-            client = await page.context.new_cdp_session(page)
-            
-            # iPhone 14 Pro Max configuration
-            await client.send('Emulation.setDeviceMetricsOverride', {
-                'mobile': True,
-                'width': 430,
-                'height': 932,
-                'deviceScaleFactor': 3,
-                'screenOrientation': {'type': 'portraitPrimary', 'angle': 0}
-            })
-            
-            # Set user agent to iPhone
-            await client.send('Network.setUserAgentOverride', {
-                'userAgent': config.USER_AGENT
-            })
-            
-            logger.info("Enabled device emulation via CDP")
-        except Exception as e:
-            logger.warning(f"Could not use CDP for device emulation: {str(e)}")
-            
-            # Fallback to JavaScript approach
-            await page.evaluate("""
-            () => {
-                // Force mobile view if not already
-                if (typeof navigator.userAgent !== 'undefined') {
-                    // Create and add mobile viewport meta tag
-                    const meta = document.createElement('meta');
-                    meta.name = 'viewport';
-                    meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-                    document.head.appendChild(meta);
-                    
-                    // Add mobile class if needed
-                    document.documentElement.classList.add('mobile');
-                    
-                    // Try to modify navigator.userAgent (may not work in all browsers)
-                    try {
-                        Object.defineProperty(navigator, 'userAgent', {
-                            get: function() { 
-                                return 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1'; 
-                            }
-                        });
-                    } catch (e) {
-                        console.error('Failed to override userAgent', e);
-                    }
-                }
-            }
-            """)
         
         # Take a screenshot for debugging (optional)
-        if not config.HEADLESS:
-            screenshot_path = os.path.join(config.OUTPUT_DIR, "tinder_screenshot.png")
-            await page.screenshot(path=screenshot_path)
-            logger.info(f"Saved screenshot to {screenshot_path}")
+        screenshot_path = os.path.join(config.OUTPUT_DIR, "tinder_screenshot.png")
+        await page.screenshot(path=screenshot_path)
+        logger.info(f"Saved screenshot to {screenshot_path}")
         
-        logger.info("Successfully navigated to Tinder")
+        logger.info("Successfully connected to Tinder")
         return True
         
     except Exception as e:
@@ -399,19 +175,23 @@ async def interact_with_profile(page: Page) -> bool:
         # Wait for profile to load
         await asyncio.sleep(1)
         
+        # Take a screenshot before interaction
+        screenshot_path = os.path.join(config.OUTPUT_DIR, "before_interaction.png")
+        await page.screenshot(path=screenshot_path)
+        
         # Navigate to the third image using right taps
         # This navigates through images without swiping profiles
         
         # Tap right side of image to go to next image
-        screen_width = 430  # From our mobile emulation
-        screen_height = 932  # From our mobile emulation
+        screen_width = await page.evaluate("window.innerWidth")
+        screen_height = await page.evaluate("window.innerHeight")
         
         # Tap right side of image (80% of width, 30% of height) to navigate images
         # We tap twice to reach approximately the 3rd image
         x_position = int(screen_width * 0.8)
         y_position = int(screen_height * 0.3)
         
-        logger.info("Navigating to 3rd image...")
+        logger.info(f"Navigating to 3rd image... (clicking at {x_position}, {y_position})")
         
         # First tap to 2nd image
         await page.mouse.click(x_position, y_position)
@@ -421,30 +201,76 @@ async def interact_with_profile(page: Page) -> bool:
         await page.mouse.click(x_position, y_position)
         await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
         
+        # Take a screenshot after navigating to the 3rd image
+        screenshot_path = os.path.join(config.OUTPUT_DIR, "after_image_navigation.png")
+        await page.screenshot(path=screenshot_path)
+        
         # Click "Show more" button
         try:
             logger.info("Looking for 'Show more' button...")
-            show_more_button = await page.wait_for_selector(config.SHOW_MORE_SELECTOR, timeout=5000)
+            
+            # Try to find the show more button using the configured selector
+            show_more_button = await page.query_selector(config.SHOW_MORE_SELECTOR)
             if show_more_button:
                 await show_more_button.click()
                 logger.info("Clicked 'Show more' button")
                 await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
+            else:
+                # Try alternative selector using text content
+                logger.info("Trying alternative selector for 'Show more' button...")
+                alt_buttons = await page.query_selector_all('div:has-text("Show more")')
+                if alt_buttons:
+                    for button in alt_buttons:
+                        # Check if this looks like a button
+                        class_name = await button.get_attribute('class')
+                        if class_name and ('button' in class_name.lower() or 'btn' in class_name.lower() or 'Bd' in class_name):
+                            await button.click()
+                            logger.info("Clicked alternative 'Show more' button")
+                            await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
+                            break
+                else:
+                    logger.warning("Could not find any 'Show more' button")
         except Exception as e:
             logger.warning(f"Could not find or click 'Show more' button: {str(e)}")
+        
+        # Take a screenshot after clicking show more
+        screenshot_path = os.path.join(config.OUTPUT_DIR, "after_show_more.png")
+        await page.screenshot(path=screenshot_path)
         
         # Click "View all 5" button if available
         try:
             logger.info("Looking for 'View all 5' button...")
-            view_all_button = await page.wait_for_selector(config.VIEW_ALL_SELECTOR, timeout=5000)
+            
+            # Try the configured selector
+            view_all_button = await page.query_selector(config.VIEW_ALL_SELECTOR)
             if view_all_button:
                 await view_all_button.click()
                 logger.info("Clicked 'View all 5' button")
                 await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
+            else:
+                # Try alternative selector
+                logger.info("Trying alternative selector for 'View all 5' button...")
+                alt_buttons = await page.query_selector_all('div:has-text("View all")')
+                if alt_buttons:
+                    for button in alt_buttons:
+                        # Check if it has an SVG inside (arrow)
+                        has_svg = await button.query_selector('svg')
+                        if has_svg:
+                            await button.click()
+                            logger.info("Clicked alternative 'View all' button")
+                            await asyncio.sleep(config.WAIT_BETWEEN_ACTIONS / 1000)
+                            break
+                else:
+                    logger.warning("Could not find any 'View all' button")
         except Exception as e:
             logger.warning(f"Could not find or click 'View all 5' button: {str(e)}")
         
         # Allow everything to load
         await asyncio.sleep(1)
+        
+        # Take a final screenshot
+        screenshot_path = os.path.join(config.OUTPUT_DIR, "after_interaction.png")
+        await page.screenshot(path=screenshot_path)
         
         return True
         
@@ -478,6 +304,27 @@ async def extract_name_and_age(page: Page) -> Tuple[Optional[str], Optional[int]
                 else:
                     # If regex doesn't match, just return the text as name
                     return name_age_text.strip(), None
+        
+        # Try alternative selector if the main one fails
+        alt_selectors = [
+            'h1', 
+            'h1[class*="display"]',
+            'div[class*="name"]',
+            'div[class*="Name"]'
+        ]
+        
+        for selector in alt_selectors:
+            elements = await page.query_selector_all(selector)
+            for element in elements:
+                text = await element.text_content()
+                if text:
+                    # Look for a pattern like "Name, 25" or "Name 25"
+                    match = re.search(r"([^\d,]+)(?:,?\s*)(\d+)", text)
+                    if match:
+                        name = match.group(1).strip()
+                        age = int(match.group(2))
+                        logger.info(f"Found name and age using alternative selector: {name}, {age}")
+                        return name, age
         
         return None, None
     
@@ -516,11 +363,24 @@ async def extract_images(page: Page) -> List[str]:
         
         # If we didn't find any images, try with a more general selector
         if not image_urls:
-            img_elements = await page.query_selector_all('.keen-slider__slide img')
-            for img in img_elements:
-                src = await img.get_attribute('src')
-                if src and not src.startswith('data:'):
-                    image_urls.append(src)
+            # Try multiple image selectors
+            selectors = [
+                '.keen-slider__slide img',
+                '.tappable-view img',
+                'div[class*="carousel"] img',
+                'img[src*="images-ssl"]'  # Tinder images often have this pattern
+            ]
+            
+            for selector in selectors:
+                img_elements = await page.query_selector_all(selector)
+                for img in img_elements:
+                    src = await img.get_attribute('src')
+                    if src and not src.startswith('data:') and src not in image_urls:
+                        image_urls.append(src)
+                
+                if image_urls:
+                    logger.info(f"Found {len(image_urls)} images using selector: {selector}")
+                    break
         
         logger.info(f"Extracted {len(image_urls)} image URLs")
         return image_urls
@@ -548,6 +408,22 @@ async def extract_interests(page: Page) -> List[str]:
             interest_text = await element.text_content()
             if interest_text:
                 interests.append(interest_text.strip())
+        
+        # Try alternative selector if no interests found
+        if not interests:
+            alt_selectors = [
+                'div[class*="Bdrs(30px)"] span',
+                'div[class*="interest"] span',
+                'div[class*="passions"] span',
+                'div[class*="Interests"] span'
+            ]
+            
+            for selector in alt_selectors:
+                elements = await page.query_selector_all(selector)
+                for element in elements:
+                    text = await element.text_content()
+                    if text and text.strip() not in interests:
+                        interests.append(text.strip())
         
         logger.info(f"Extracted {len(interests)} interests")
         return interests
@@ -674,12 +550,15 @@ async def close_browser(browser: Browser, context: BrowserContext, page: Page) -
         page: Playwright page object
     """
     try:
-        if not config.CHROME_PROFILE_PATH:  # Only save session if not using Chrome profile
+        if config.USE_REMOTE_CHROME:
+            # Don't close the page if using remote Chrome - let the user keep control
+            logger.info("Not closing browser since we're using remote debugging")
+        else:
+            # Save session if not using remote Chrome
             await save_session(context)
-        await page.close()
-        await context.close()
-        if not config.CHROME_PROFILE_PATH:  # Only close browser if not using Chrome profile
+            await page.close()
+            await context.close()
             await browser.close()
-        logger.info("Browser resources closed")
+            logger.info("Browser resources closed")
     except Exception as e:
         logger.error(f"Error closing browser: {str(e)}")

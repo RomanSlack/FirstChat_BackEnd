@@ -195,54 +195,59 @@ def run_interactive():
     
     print("\n=== Tinder Profile Scraper ===\n")
     print("This scraper will extract data from exactly ONE profile and then stop.")
+    print()
+    print("IMPORTANT: For best results, run the following steps:")
+    print("1. Run: ./launch_chrome.sh")
+    print("2. In the opened Chrome window, go to Tinder and log in if needed")
+    print("3. Enable mobile emulation in Chrome DevTools (F12 -> Toggle device toolbar)")
+    print("4. Select iPhone 12 Pro Max as the device")
+    print("5. Navigate to a Tinder profile you want to scrape")
+    print("6. In a new terminal, run this script again")
+    print()
     
     try:
-        headless = input("Run in headless mode? (y/N): ").lower() == 'y'
-        use_chrome = input("Use existing Chrome profile? (y/N): ").lower() == 'y'
         # Always use profile_count=1
         profile_count = 1
         delay = 0 # Not used since we're only scraping one profile
         
-        chrome_profile = None
-        chrome_executable = None
-        
-        if use_chrome:
-            chrome_profile = input("Enter Chrome profile path: ")
-            specify_chrome_executable = input("Specify Chrome executable path? (y/N): ").lower() == 'y'
+        # Check if Chrome is running with remote debugging
+        import socket
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            result = sock.connect_ex(('localhost', config.REMOTE_DEBUGGING_PORT))
+            sock.close()
             
-            if specify_chrome_executable:
-                # Find Chrome path
-                import subprocess
-                try:
-                    # Try to find Chrome executable with 'which' command
-                    chrome_path = subprocess.check_output(["which", "google-chrome"], 
-                                                          stderr=subprocess.STDOUT, 
-                                                          universal_newlines=True).strip()
-                    print(f"Found Chrome at: {chrome_path}")
-                except subprocess.CalledProcessError:
-                    chrome_path = ""
+            if result == 0:
+                print(f"Found Chrome running with remote debugging on port {config.REMOTE_DEBUGGING_PORT}")
+                use_remote_chrome = input("Connect to this Chrome instance? (Y/n): ").lower() != 'n'
+                config.USE_REMOTE_CHROME = use_remote_chrome
+            else:
+                print(f"No Chrome instance found on port {config.REMOTE_DEBUGGING_PORT}")
+                print("You can start Chrome with remote debugging using: ./launch_chrome.sh")
+                use_remote_chrome = False
+                config.USE_REMOTE_CHROME = use_remote_chrome
                 
-                if not chrome_path:
-                    print("Couldn't automatically find Chrome executable")
-                    print("Common locations:")
-                    print("  - Linux: /usr/bin/google-chrome or /usr/bin/chromium-browser")
-                    print("  - macOS: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
-                    print("  - Windows: C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe")
+                # If not using remote Chrome, ask about headless mode
+                headless = input("Run in headless mode? (y/N): ").lower() == 'y'
+                config.HEADLESS = headless
                 
-                chrome_executable = input("Enter Chrome executable path: ")
+                # Ask about Chrome profile
+                use_profile = input(f"Use default Chrome profile ({config.CHROME_PROFILE_PATH})? (Y/n): ").lower() != 'n'
+                if not use_profile:
+                    chrome_profile = input("Enter Chrome profile path: ")
+                    if chrome_profile:
+                        config.CHROME_PROFILE_PATH = chrome_profile
+        except:
+            print("Could not check for running Chrome instances")
+            config.USE_REMOTE_CHROME = False
         
-        # Update config
-        config.HEADLESS = headless
-        if chrome_profile:
-            config.CHROME_PROFILE_PATH = chrome_profile
-        if chrome_executable:
-            config.CHROME_EXECUTABLE_PATH = chrome_executable
-        
+        # Print settings
         print("\nStarting scraper with the following settings:")
-        print(f"- Headless mode: {'Yes' if headless else 'No'}")
-        print(f"- Chrome profile: {'Yes' if chrome_profile else 'No'}")
-        if chrome_executable:
-            print(f"- Chrome executable: {chrome_executable}")
+        if config.USE_REMOTE_CHROME:
+            print(f"- Using remote Chrome on port {config.REMOTE_DEBUGGING_PORT}")
+        else:
+            print(f"- Headless mode: {'Yes' if config.HEADLESS else 'No'}")
+            print(f"- Chrome profile: {config.CHROME_PROFILE_PATH}")
         print(f"- Output directory: {config.OUTPUT_DIR}")
         print("\nThe scraper will extract ONE profile only and then stop.")
         print("Press Ctrl+C to stop at any time\n")
