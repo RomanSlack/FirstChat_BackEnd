@@ -1,83 +1,100 @@
-# FirstChat REST API
+# FirstChat - Dating App First Message Generator
 
-A high-performance, scalable REST API for generating personalized first messages for dating apps.
+A complete system for generating personalized first messages for dating apps, composed of three main components:
 
-## Features
+## System Components
 
-- **Asynchronous Processing**: Uses FastAPI and asyncio for non-blocking I/O
-- **Image Analysis**: Processes images using Google Cloud Vision API to extract context
-- **AI Message Generation**: Uses OpenAI to generate personalized conversation starters
-- **Validation**: Full request/response validation with Pydantic
-- **API Documentation**: Auto-generated via Swagger/OpenAPI
+### 1. Profile Scraper (`/scraper_layer`)
+- Extracts profile data from dating apps (currently Tinder)
+- Saves profile details and images to structured folders
+- Uses Playwright and Chrome for reliable profile extraction
 
-## Setup
+### 2. API Server (`/servers/rest_firstchat_api`)
+- FastAPI server that processes profile data and images
+- Generates personalized first messages using OpenAI GPT models
+- Provides a RESTful API for message generation
 
-1. Install dependencies:
+### 3. User Interface (`/user_inteface`)
+- Flask web application with an intuitive UI
+- Allows users to upload images and enter profile information
+- Displays generated messages with detailed analytics
 
+## Quick Start Guide
+
+### Clone the Repository
 ```bash
+git clone <repository-url>
+cd FirstChat_BackEnd
+```
+
+### Setup and Run Each Component
+
+#### 1. Profile Scraper
+```bash
+cd scraper_layer
 pip install -r requirements.txt
+playwright install chromium
+./launch_chrome.sh  # In one terminal
+./run_scraper       # In another terminal
 ```
 
-2. Set required environment variables:
-
+#### 2. API Server
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/google-credentials.json
+cd servers/rest_firstchat_api
+pip install -r requirements.txt
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 export OPENAI_API_KEY=your_openai_api_key
+uvicorn app:app --host 0.0.0.0 --port 8002
 ```
 
-3. Run the server:
-
+#### 3. User Interface
 ```bash
-uvicorn app:app --host 0.0.0.0 --port 8002 --reload
+cd user_inteface
+pip install flask openai Pillow google-cloud-vision
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
+export OPENAI_API_KEY=your_openai_api_key
+python app.py
 ```
 
-## API Endpoints
+## System Requirements
 
-### Health Check
+- Python 3.9+
+- Google Cloud Vision API credentials
+- OpenAI API key
+- Chrome/Chromium for the scraper component
 
-```
-GET /health
-```
+## Development Environment Setup
 
-Returns server status and version information.
+For a complete development environment, you can set up each component in sequence:
 
-### Generate Message
+1. **Set up environment variables**:
+   Create a `.env` file in each component directory with the required API keys.
 
-```
-POST /generate_message
-```
+2. **Install all dependencies**:
+   ```bash
+   cd scraper_layer && pip install -r requirements.txt
+   cd ../servers/rest_firstchat_api && pip install -r requirements.txt
+   cd ../user_inteface && pip install flask openai Pillow google-cloud-vision
+   ```
 
-Accepts JSON with:
+3. **Initialize the database** (if using one in the future):
+   Currently, the system does not use a persistent database, but stores extracted profiles in the filesystem.
 
-- `image1`: Base64 encoded image (can include data URI prefix)
-- `image2`: Base64 encoded image (can include data URI prefix)
-- `user_bio`: The user's bio text
-- `match_bio`: Object containing name, age, bio, and interests
-- `sentence_count`: Number of sentences in generated message (1-5)
-- `tone`: Message tone (friendly, witty, flirty, casual, confident)
-- `creativity`: Creativity level (0.0-1.0)
+## Configuration
 
-## Example Request
+Each component has its own configuration options:
 
-```json
-{
-  "image1": "base64encodedimage...",
-  "image2": "base64encodedimage...",
-  "user_bio": "I'm a 28-year-old software engineer who loves hiking and photography...",
-  "match_bio": {
-    "name": "Emma",
-    "age": 27,
-    "bio": "Adventure seeker and coffee enthusiast. Love hiking and exploring new places.",
-    "interests": ["hiking", "travel", "photography", "coffee"]
-  },
-  "sentence_count": 2,
-  "tone": "friendly",
-  "creativity": 0.7
-}
-```
+- **Scraper**: Edit `scraper_layer/config.py` to adjust scraper behavior
+- **API Server**: Configuration is primarily through environment variables 
+- **User Interface**: Settings are defined in the Flask app (`user_inteface/app.py`)
 
 ## Documentation
 
-When the server is running, visit:
-- http://localhost:8002/docs for Swagger UI
-- http://localhost:8002/redoc for ReDoc UI
+For detailed documentation on each component, refer to the README.md files in their respective directories:
+
+- [Scraper Documentation](scraper_layer/README.md)
+- [API Server Documentation](servers/rest_firstchat_api/README.md)
+
+## License
+
+Proprietary - All rights reserved.
