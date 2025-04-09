@@ -571,12 +571,35 @@ INDEX_HTML = """
             border-radius: 8px;
             overflow: hidden;
             aspect-ratio: 3/4;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.2s ease;
+        }
+        
+        .gallery-image.selected {
+            border-color: var(--primary);
         }
         
         .gallery-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+        }
+        
+        .image-selection-section {
+            margin-top: 16px;
+        }
+        
+        .image-selection-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .image-selection-title h3 {
+            font-size: 1.1rem;
+            color: var(--text-dark);
         }
         
         @media (max-width: 768px) {
@@ -796,18 +819,38 @@ INDEX_HTML = """
                             </div>
                             
                             <div class="settings-group">
-                                <label>Selected Images</label>
-                                <div class="image-gallery" id="selected-images">
-                                    {% if selected_profile and selected_profile.images %}
-                                    <div class="gallery-image">
-                                        <img src="{{ selected_profile.images[0] }}" alt="Primary image" id="primary-image">
+                                <div class="image-selection-title">
+                                    <h3>Selected Images</h3>
+                                    <button type="button" class="btn-secondary" id="randomize-images-btn" style="padding: 5px 10px; font-size: 0.9rem" {% if not selected_profile or not selected_profile.images %}disabled{% endif %}>
+                                        <i class="fas fa-random"></i> Randomize
+                                    </button>
+                                </div>
+                                
+                                {% if selected_profile and selected_profile.images %}
+                                <div class="image-gallery" id="image-gallery">
+                                    {% for image in selected_profile.images %}
+                                    <div class="gallery-image {% if loop.index == 1 %}selected{% endif %}" data-image="{{ image }}" data-index="{{ loop.index0 }}">
+                                        <img src="{{ image }}" alt="Profile image {{ loop.index }}">
                                     </div>
-                                    <div class="gallery-image">
-                                        <img src="{{ selected_profile.images[1] if selected_profile.images|length > 1 else selected_profile.images[0] }}" alt="Secondary image" id="secondary-image">
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <p>No images available</p>
+                                {% endif %}
+                                
+                                <div style="display: flex; margin-top: 16px; gap: 12px;">
+                                    <div style="flex: 1;">
+                                        <div class="profile-section-title">Primary Image</div>
+                                        <div id="primary-image-container" style="border-radius: 8px; overflow: hidden; aspect-ratio: 3/4;">
+                                            <img src="{{ selected_profile.images[0] if selected_profile and selected_profile.images else '' }}" alt="Primary image" id="primary-image" style="width: 100%; height: 100%; object-fit: cover;">
+                                        </div>
                                     </div>
-                                    {% else %}
-                                    <p>No images available</p>
-                                    {% endif %}
+                                    <div style="flex: 1;">
+                                        <div class="profile-section-title">Secondary Image</div>
+                                        <div id="secondary-image-container" style="border-radius: 8px; overflow: hidden; aspect-ratio: 3/4;">
+                                            <img src="{{ selected_profile.images[1] if selected_profile and selected_profile.images|length > 1 else selected_profile.images[0] if selected_profile and selected_profile.images else '' }}" alt="Secondary image" id="secondary-image" style="width: 100%; height: 100%; object-fit: cover;">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -818,9 +861,6 @@ INDEX_HTML = """
                     <input type="hidden" id="image2" name="image2" value="{{ selected_profile.images[1] if selected_profile and selected_profile.images|length > 1 else selected_profile.images[0] if selected_profile and selected_profile.images else '' }}">
                     
                     <div class="btn-section">
-                        <button type="button" class="btn btn-secondary" id="randomize-images-btn" {% if not selected_profile or not selected_profile.images %}disabled{% endif %}>
-                            <i class="fas fa-random"></i> Randomize Images
-                        </button>
                         <button type="submit" class="btn" id="generate-btn" {% if not selected_profile %}disabled{% endif %}>
                             <i class="fas fa-comment-dots"></i> Generate Message
                         </button>
@@ -896,6 +936,9 @@ INDEX_HTML = """
             const toast = document.getElementById('toast');
             const toastMessage = document.getElementById('toast-message');
             const resultsTab = document.getElementById('resultsTab');
+            const imageGallery = document.getElementById('image-gallery');
+            const primaryImage = document.getElementById('primary-image');
+            const secondaryImage = document.getElementById('secondary-image');
             
             // Tab functionality
             tabs.forEach(tab => {
@@ -965,6 +1008,49 @@ INDEX_HTML = """
                 });
             }
             
+            // Image gallery selection
+            if (imageGallery) {
+                const galleryImages = imageGallery.querySelectorAll('.gallery-image');
+                let selectedPrimaryIndex = 0;
+                let selectedSecondaryIndex = galleryImages.length > 1 ? 1 : 0;
+                
+                galleryImages.forEach(img => {
+                    img.addEventListener('click', () => {
+                        const imageIndex = parseInt(img.getAttribute('data-index'));
+                        const imageSrc = img.getAttribute('data-image');
+                        
+                        // If primary is being clicked again, do nothing
+                        if (selectedPrimaryIndex === imageIndex) {
+                            return;
+                        }
+                        
+                        // If secondary is being clicked again, swap primary and secondary
+                        if (selectedSecondaryIndex === imageIndex) {
+                            const tempIndex = selectedPrimaryIndex;
+                            selectedPrimaryIndex = selectedSecondaryIndex;
+                            selectedSecondaryIndex = tempIndex;
+                            
+                            // Update the images
+                            if (primaryImage) primaryImage.src = galleryImages[selectedPrimaryIndex].getAttribute('data-image');
+                            if (secondaryImage) secondaryImage.src = galleryImages[selectedSecondaryIndex].getAttribute('data-image');
+                            
+                            // Update hidden inputs
+                            image1Input.value = galleryImages[selectedPrimaryIndex].getAttribute('data-image');
+                            image2Input.value = galleryImages[selectedSecondaryIndex].getAttribute('data-image');
+                            
+                            return;
+                        }
+                        
+                        // Otherwise, this is a new selection - make it the secondary image
+                        selectedSecondaryIndex = imageIndex;
+                        
+                        // Update secondary image
+                        if (secondaryImage) secondaryImage.src = imageSrc;
+                        image2Input.value = imageSrc;
+                    });
+                });
+            }
+            
             // Sliders
             if (sentenceSlider) {
                 sentenceSlider.addEventListener('input', () => {
@@ -980,37 +1066,56 @@ INDEX_HTML = """
                 });
             }
             
-            // Randomize images
+            // Randomize images button
             if (randomizeImagesBtn) {
                 randomizeImagesBtn.addEventListener('click', () => {
                     const selectedProfile = {{ selected_profile_json|safe if selected_profile_json else 'null' }};
                     if (selectedProfile && selectedProfile.images && selectedProfile.images.length > 1) {
-                        // Always use the first image for image1
-                        const image1 = selectedProfile.images[0];
+                        // Always use Profile Photo 1 for the primary image if available
+                        let primaryImageUrl = selectedProfile.images[0];
                         
-                        // Randomly select a second image from the remaining ones
-                        const remainingImages = selectedProfile.images.slice(1);
-                        const randomIndex = Math.floor(Math.random() * remainingImages.length);
-                        const image2 = remainingImages[randomIndex];
+                        if (selectedProfile.labeled_image_urls && selectedProfile.labeled_image_urls["Profile Photo 1"]) {
+                            primaryImageUrl = selectedProfile.labeled_image_urls["Profile Photo 1"];
+                        }
                         
-                        // Update the inputs
-                        image1Input.value = image1;
-                        image2Input.value = image2;
+                        // Get all other images
+                        let secondaryImages = [];
                         
-                        // Update the display
-                        const primaryImage = document.getElementById('primary-image');
-                        const secondaryImage = document.getElementById('secondary-image');
+                        // Add all labeled images except the one used for primary
+                        if (selectedProfile.labeled_image_urls) {
+                            for (const [label, url] of Object.entries(selectedProfile.labeled_image_urls)) {
+                                if (url !== primaryImageUrl) {
+                                    secondaryImages.push(url);
+                                }
+                            }
+                        }
                         
-                        if (primaryImage) primaryImage.src = image1;
-                        if (secondaryImage) secondaryImage.src = image2;
+                        // Add any unlabeled images that aren't already included
+                        for (const url of selectedProfile.images) {
+                            if (url !== primaryImageUrl && !secondaryImages.includes(url)) {
+                                secondaryImages.push(url);
+                            }
+                        }
                         
-                        // Show toast
-                        showToast('Images randomized!');
+                        // If we have secondary images, randomly select one
+                        if (secondaryImages.length > 0) {
+                            const randomIndex = Math.floor(Math.random() * secondaryImages.length);
+                            const secondaryImageUrl = secondaryImages[randomIndex];
+                            
+                            // Update the UI and form inputs
+                            if (primaryImage) primaryImage.src = primaryImageUrl;
+                            if (secondaryImage) secondaryImage.src = secondaryImageUrl;
+                            
+                            image1Input.value = primaryImageUrl;
+                            image2Input.value = secondaryImageUrl;
+                            
+                            showToast("Images randomized!");
+                        }
                     }
                 });
             }
             
-            // Generate message
+            // Generate message form
             if (messageForm) {
                 messageForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
