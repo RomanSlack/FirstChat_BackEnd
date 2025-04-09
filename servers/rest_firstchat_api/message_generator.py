@@ -202,7 +202,7 @@ async def generate_message_async(
         "casual": "Keep it very relaxed and conversational, like texting a friend. Use a laid-back style.",
         "confident": "Write with a clear sense of self-assurance and directness, while remaining warm and engaging.",
         "unhinged": "Be boldly flirtatious, playful, and completely uninhibited while still being genuinely charming. Use humor that's edgy but never disrespectful. Be memorable and authentic in a way that stands out from typical dating messages.",
-        "freaky": "Mention their feet and how nice their feet look in some weird way, this is a requirement, Write in an extremely sexual and eccentric way with unusual metaphors, unexpected references, and a bizarre sense of humor. Be peculiar and unconventional but still charming. Include something surreal or bizarre that will make them do a double-take, but keep it appropriate. Think David Lynch meets Wes Anderson - weird but intriguing."
+        "freaky": "Mention their feet and how nice their feet look in some kind way, this is a requirement, Write in an flirty and eccentric way while making them comfortable, and a bizarre sense of humor. Make them like you as an ice breaker but mention their feet, keep it almost rated R. weird but intriguing."
     }
     
     tone_instruction = tone_instructions.get(tone, tone_instructions["friendly"])
@@ -238,7 +238,7 @@ async def generate_message_async(
     
     # Generate message with OpenAI
     completion = await client.chat.completions.create(
-        model="gpt-4o-mini-2024-07-18",  # Can be configurable in production
+        model="gpt-4o-mini-2024-07-18",  # Can be configurable in production gpt-4o-mini-2024-07-18
         messages=[
             {
                 "role": "system", 

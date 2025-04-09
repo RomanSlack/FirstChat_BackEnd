@@ -1206,39 +1206,48 @@ INDEX_HTML = """
                             
                             // Update message details
                             document.getElementById('message-details').innerHTML = `
-                                <div>
-                                    <div class="section-title">Image Analysis</div>
-                                    <div class="interests-list">
-                                        ${data.image_tags.map(tag => `<div class="interest-tag">${tag}</div>`).join('')}
-                                    </div>
-                                    
-                                    <div class="section-title" style="margin-top: 20px;">Settings Used</div>
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                                        <div>
-                                            <strong>Tone:</strong> ${data.tone.charAt(0).toUpperCase() + data.tone.slice(1)}
-                                        </div>
-                                        <div>
-                                            <strong>Length:</strong> ${data.sentence_count} sentence${data.sentence_count > 1 ? 's' : ''}
-                                        </div>
-                                        <div>
-                                            <strong>Creativity:</strong> ${data.creativity}
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="section-title" style="margin-top: 20px;">Token Usage</div>
+                                <div style="display: grid; grid-template-columns: 250px 1fr; gap: 20px;">
                                     <div>
-                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                                            <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-right: 10px;">
-                                                <div style="height: 100%; width: ${(data.token_usage.completion_tokens / data.token_usage.total_tokens * 100).toFixed(0)}%; background: var(--primary);"></div>
+                                        <div class="section-title">Profile Image</div>
+                                        <div style="border-radius: 12px; overflow: hidden; margin-top: 10px;">
+                                            <img src="${formData.get('image1')}" style="width: 100%; aspect-ratio: 3/4; object-fit: cover;" alt="Profile image">
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <div class="section-title">Image Analysis</div>
+                                        <div class="interests-list">
+                                            ${data.image_tags.map(tag => `<div class="interest-tag">${tag}</div>`).join('')}
+                                        </div>
+                                        
+                                        <div class="section-title" style="margin-top: 20px;">Settings Used</div>
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                                            <div>
+                                                <strong>Tone:</strong> ${data.tone.charAt(0).toUpperCase() + data.tone.slice(1)}
                                             </div>
-                                            <div style="font-size: 13px; color: var(--text-gray); min-width: 100px; text-align: right;">
-                                                ${data.token_usage.completion_tokens} / ${data.token_usage.total_tokens}
+                                            <div>
+                                                <strong>Length:</strong> ${data.sentence_count} sentence${data.sentence_count > 1 ? 's' : ''}
+                                            </div>
+                                            <div>
+                                                <strong>Creativity:</strong> ${data.creativity}
                                             </div>
                                         </div>
-                                        <div style="font-size: 13px; color: var(--text-gray);">
-                                            <strong>Prompt tokens:</strong> ${data.token_usage.prompt_tokens} &nbsp;&nbsp; 
-                                            <strong>Response tokens:</strong> ${data.token_usage.completion_tokens} &nbsp;&nbsp;
-                                            <strong>Total:</strong> ${data.token_usage.total_tokens}
+                                        
+                                        <div class="section-title" style="margin-top: 20px;">Token Usage</div>
+                                        <div>
+                                            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                                <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-right: 10px;">
+                                                    <div style="height: 100%; width: ${(data.token_usage.completion_tokens / data.token_usage.total_tokens * 100).toFixed(0)}%; background: var(--primary);"></div>
+                                                </div>
+                                                <div style="font-size: 13px; color: var(--text-gray); min-width: 100px; text-align: right;">
+                                                    ${data.token_usage.completion_tokens} / ${data.token_usage.total_tokens}
+                                                </div>
+                                            </div>
+                                            <div style="font-size: 13px; color: var(--text-gray);">
+                                                <strong>Prompt tokens:</strong> ${data.token_usage.prompt_tokens} &nbsp;&nbsp; 
+                                                <strong>Response tokens:</strong> ${data.token_usage.completion_tokens} &nbsp;&nbsp;
+                                                <strong>Total:</strong> ${data.token_usage.total_tokens}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1339,39 +1348,48 @@ INDEX_HTML = """
                             
                             // Update message details
                             document.getElementById('message-details').innerHTML = `
-                                <div>
-                                    <div class="section-title">Image Analysis</div>
-                                    <div class="interests-list">
-                                        ${data.image_tags.map(tag => `<div class="interest-tag">${tag}</div>`).join('')}
-                                    </div>
-                                    
-                                    <div class="section-title" style="margin-top: 20px;">Settings Used</div>
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                                        <div>
-                                            <strong>Tone:</strong> ${data.tone.charAt(0).toUpperCase() + data.tone.slice(1)}
-                                        </div>
-                                        <div>
-                                            <strong>Length:</strong> ${data.sentence_count} sentence${data.sentence_count > 1 ? 's' : ''}
-                                        </div>
-                                        <div>
-                                            <strong>Creativity:</strong> ${data.creativity}
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="section-title" style="margin-top: 20px;">Token Usage</div>
+                                <div style="display: grid; grid-template-columns: 250px 1fr; gap: 20px;">
                                     <div>
-                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                                            <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-right: 10px;">
-                                                <div style="height: 100%; width: ${(data.token_usage.completion_tokens / data.token_usage.total_tokens * 100).toFixed(0)}%; background: var(--primary);"></div>
+                                        <div class="section-title">Profile Image</div>
+                                        <div style="border-radius: 12px; overflow: hidden; margin-top: 10px;">
+                                            <img src="${formData.get('image1')}" style="width: 100%; aspect-ratio: 3/4; object-fit: cover;" alt="Profile image">
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <div class="section-title">Image Analysis</div>
+                                        <div class="interests-list">
+                                            ${data.image_tags.map(tag => `<div class="interest-tag">${tag}</div>`).join('')}
+                                        </div>
+                                        
+                                        <div class="section-title" style="margin-top: 20px;">Settings Used</div>
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                                            <div>
+                                                <strong>Tone:</strong> ${data.tone.charAt(0).toUpperCase() + data.tone.slice(1)}
                                             </div>
-                                            <div style="font-size: 13px; color: var(--text-gray); min-width: 100px; text-align: right;">
-                                                ${data.token_usage.completion_tokens} / ${data.token_usage.total_tokens}
+                                            <div>
+                                                <strong>Length:</strong> ${data.sentence_count} sentence${data.sentence_count > 1 ? 's' : ''}
+                                            </div>
+                                            <div>
+                                                <strong>Creativity:</strong> ${data.creativity}
                                             </div>
                                         </div>
-                                        <div style="font-size: 13px; color: var(--text-gray);">
-                                            <strong>Prompt tokens:</strong> ${data.token_usage.prompt_tokens} &nbsp;&nbsp; 
-                                            <strong>Response tokens:</strong> ${data.token_usage.completion_tokens} &nbsp;&nbsp;
-                                            <strong>Total:</strong> ${data.token_usage.total_tokens}
+                                        
+                                        <div class="section-title" style="margin-top: 20px;">Token Usage</div>
+                                        <div>
+                                            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                                <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-right: 10px;">
+                                                    <div style="height: 100%; width: ${(data.token_usage.completion_tokens / data.token_usage.total_tokens * 100).toFixed(0)}%; background: var(--primary);"></div>
+                                                </div>
+                                                <div style="font-size: 13px; color: var(--text-gray); min-width: 100px; text-align: right;">
+                                                    ${data.token_usage.completion_tokens} / ${data.token_usage.total_tokens}
+                                                </div>
+                                            </div>
+                                            <div style="font-size: 13px; color: var(--text-gray);">
+                                                <strong>Prompt tokens:</strong> ${data.token_usage.prompt_tokens} &nbsp;&nbsp; 
+                                                <strong>Response tokens:</strong> ${data.token_usage.completion_tokens} &nbsp;&nbsp;
+                                                <strong>Total:</strong> ${data.token_usage.total_tokens}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
