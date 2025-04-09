@@ -1,0 +1,112 @@
+#!/bin/bash
+# Run the Tinder Profile Scraper with FirstChat API integration
+
+# Set default user bio if not provided
+DEFAULT_USER_BIO="I'm a software engineer who loves hiking, cooking, and playing guitar. I enjoy traveling to new places and trying different cuisines. Looking for someone to share adventures with!"
+
+# Navigate to the script directory
+cd "$(dirname "$0")"
+
+# Parse command line arguments
+API_URL=""
+USER_BIO="$DEFAULT_USER_BIO"
+GENERATE_FIRSTCHAT=true
+
+function show_help {
+    echo "Usage: $0 [OPTIONS]"
+    echo "Run the Tinder Profile Scraper with FirstChat integration"
+    echo ""
+    echo "Options:"
+    echo "  --help                  Show this help message and exit"
+    echo "  --api-url URL           Set the FirstChat API URL (default: http://localhost:8002/generate_message)"
+    echo "  --user-bio \"TEXT\"       Set the user bio text (must be in quotes)"
+    echo "  --no-firstchat          Run the scraper without generating FirstChat"
+    echo ""
+    echo "Example:"
+    echo "  $0 --api-url http://myserver:8002/generate_message --user-bio \"I love hiking and cooking\""
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --help)
+            show_help
+            exit 0
+            ;;
+        --api-url)
+            API_URL="$2"
+            shift 2
+            ;;
+        --user-bio)
+            USER_BIO="$2"
+            shift 2
+            ;;
+        --no-firstchat)
+            GENERATE_FIRSTCHAT=false
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+# Run the scraper first
+echo "Running Tinder Profile Scraper..."
+python main.py
+
+if [ "$GENERATE_FIRSTCHAT" = true ]; then
+    # Find the most recent profile folder
+    LATEST_PROFILE=$(find ./scraped_profiles -maxdepth 1 -type d -not -name "scraped_profiles" | sort -r | head -n 1)
+    
+    if [ -z "$LATEST_PROFILE" ]; then
+        echo "No scraped profiles found. Please run the scraper first."
+        exit 1
+    fi
+    
+    echo ""
+    echo "Found profile: $LATEST_PROFILE"
+    
+    # Pass the folder path and user bio to the FirstChat generation script
+    echo "Generating FirstChat message..."
+    python -c "
+import asyncio
+import sys
+import os
+from api_client import process_profile_for_firstchat
+from loguru import logger
+
+async def main():
+    api_url = '$API_URL' or 'http://localhost:8002/generate_message'
+    user_bio = '$USER_BIO'
+    profile_folder = '$LATEST_PROFILE'
+    
+    print(f'Using API URL: {api_url}')
+    print(f'Using user bio: {user_bio}')
+    
+    result = await process_profile_for_firstchat(profile_folder, user_bio, api_url)
+    
+    if result:
+        message = result.get('data', {}).get('generated_message', 'No message generated')
+        print('\n===== Generated FirstChat Message =====')
+        print(message)
+        print('=====================================\n')
+        print(f'Full result saved to {profile_folder}/firstchat_message.json')
+    else:
+        print('Failed to generate FirstChat message.')
+        sys.exit(1)
+
+if __name__ == '__main__':
+    asyncio.run(main())
+"
+    
+    # Check if the script ran successfully
+    if [ $? -ne 0 ]; then
+        echo "Error generating FirstChat message. Check logs for details."
+        exit 1
+    fi
+fi
+
+echo "Process completed successfully!"

@@ -1,7 +1,7 @@
 # FirstChat Backend System
 
 A complete backend solution for a dating app first message generator with three main components:
-1. Profile Data Scraper (scraper_layer)
+1. Profile Data Scraper (scraper_layer) 
 2. API Server (servers/rest_firstchat_api)
 3. User Interface (user_interface)
 
@@ -15,6 +15,12 @@ The FirstChat system works as follows:
 ## 1. Profile Scraper
 
 The scraper extracts profile data from ONE Tinder profile at a time, including name, age, interests, and images.
+
+### NEW: FirstChat API Integration
+
+The scraper now includes integration with the FirstChat API to automatically generate first messages for scraped profiles. You can:
+- Run the standalone scraper without generating messages
+- Run the integrated version that automatically sends profile data to the API and generates a first message
 
 ### Installation
 
@@ -35,7 +41,9 @@ playwright install chromium
 
 ### Running the Scraper
 
-#### Method 1: Two-step process (Recommended)
+#### Standalone Scraper (without FirstChat)
+
+##### Method 1: Two-step process (Recommended)
 
 1. Launch Chrome with remote debugging enabled:
 ```bash
@@ -57,11 +65,35 @@ playwright install chromium
 
 4. Select "Yes" when asked if you want to connect to the running Chrome instance
 
-#### Method 2: Interactive Mode
+##### Method 2: Interactive Mode
 
 Run the scraper directly and follow the prompts:
 ```bash
 ./run_scraper
+```
+
+#### Scraper with FirstChat Integration
+
+To run the scraper and automatically generate a first message for the scraped profile:
+
+```bash
+./run_scraper_with_firstchat
+```
+
+This script supports the following command line options:
+
+```bash
+./run_scraper_with_firstchat --help
+```
+
+Options:
+- `--api-url URL` - Set the FirstChat API URL (default: http://localhost:8002/generate_message)
+- `--user-bio "TEXT"` - Set the user bio text (must be in quotes)
+- `--no-firstchat` - Run the scraper without generating FirstChat
+
+Example:
+```bash
+./run_scraper_with_firstchat --api-url http://myserver:8002/generate_message --user-bio "I love hiking and cooking"
 ```
 
 ### Scraper Output
@@ -69,7 +101,8 @@ Run the scraper directly and follow the prompts:
 For each profile, the scraper creates a directory in `./scraped_profiles/` with:
 - `profile_data.json`: All extracted profile data in structured format
 - `profile.html`: Raw HTML of the profile (if enabled in config)
-- `image_0.jpg`, `image_1.jpg`, etc.: All downloaded profile images
+- Downloaded profile images from the profile
+- `firstchat_message.json`: Generated first message (when using FirstChat integration)
 - Screenshots from the extraction process for debugging
 
 ## 2. REST API Server
@@ -139,11 +172,24 @@ The web interface will be available at http://localhost:5000
 
 ## End-to-End Workflow
 
+### Original Manual Workflow
 1. Use the scraper to extract profile data from a dating app
 2. Take the profile data and images from the scraper output
 3. Either:
    - Use the web interface to generate a message
    - Make a direct API call to the REST server
+
+### NEW Automated Workflow
+1. Run the integrated scraper with FirstChat:
+   ```bash
+   ./run_scraper_with_firstchat
+   ```
+2. The script automatically:
+   - Scrapes the profile data
+   - Processes and formats the data for the API
+   - Sends it to the FirstChat API
+   - Receives and saves the generated message
+   - Displays the message in the terminal
 
 ## Troubleshooting
 
@@ -152,6 +198,7 @@ The web interface will be available at http://localhost:5000
 - **Elements Not Found**: Use the recommended method with remote debugging
 - **Images Not Downloading**: Check the screenshots in the output directory
 - **Remote Debugging Not Working**: Make sure Chrome is running with remote debugging on port 9222
+- **FirstChat Integration Failing**: Ensure the API server is running at the correct URL (default: http://localhost:8002)
 
 ### API Server Issues
 - **Missing Environment Variables**: Ensure GOOGLE_APPLICATION_CREDENTIALS and OPENAI_API_KEY are set
