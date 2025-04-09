@@ -12,6 +12,7 @@ This module contains the business logic separate from the API routes.
 import os
 import base64
 import json
+import time
 from typing import List, Dict, Any, Optional, Tuple, Union
 import asyncio
 
@@ -238,6 +239,37 @@ async def generate_message_async(
     if "interests" in match_bio and match_bio["interests"]:
         match_bio_formatted += f"Interests: {', '.join(match_bio['interests'])}"
     
+    # Save the prompt and completion to a log file
+    log_entry = {
+        "timestamp": time.time(),
+        "prompt": prompt,
+        "completion": generated_message,
+        "image_tags": filtered_tags,
+        "match_bio": match_bio,
+        "user_bio": user_bio,
+        "system_prompt": "You are an expert dating app first message generator for men messaging women. Your specialty is creating authentic, genuine first messages that don't sound generic or fake. Pay close attention to the image context provided and incorporate those details naturally to show you've actually looked at their profile. Adapt your tone based on the match's age - younger (18-24) should be more casual and playful, mid-range (25-35) balanced and interesting, older (36+) slightly more mature but still fun. When referencing image details, be specific rather than vague. Absolutely never create details that weren't mentioned (like fake names or invented scenarios). Include only 1 question maximum, placed at the end. Keep your messages conversational and genuine - write as a real person would text, not like marketing copy. Do not use emojis or be creepy.",
+        "settings": {
+            "sentence_count": sentence_count,
+            "tone": tone,
+            "creativity": creativity,
+            "model": "gpt-4o-mini-2024-07-18"
+        },
+        "token_usage": {
+            "prompt_tokens": prompt_tokens, 
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens
+        }
+    }
+    
+    # Ensure log directory exists
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Write to log file with timestamp
+    log_file = os.path.join(log_dir, f"api_requests_{time.strftime('%Y-%m-%d')}.jsonl")
+    with open(log_file, "a") as f:
+        f.write(json.dumps(log_entry) + "\n")
+    
     # Return complete result with all data
     return {
         "generated_message": generated_message,
@@ -251,5 +283,6 @@ async def generate_message_async(
             "sentence_count": sentence_count,
             "tone": tone,
             "creativity": creativity
-        }
+        },
+        "prompt": prompt  # Include the prompt in the response
     }

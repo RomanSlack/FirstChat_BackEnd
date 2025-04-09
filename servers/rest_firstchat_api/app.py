@@ -23,6 +23,7 @@ from typing import Dict, List, Optional, Any, Union
 import uvicorn
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
 from pydantic.json import pydantic_encoder
 
@@ -32,8 +33,12 @@ from message_generator import generate_message_async
 app = FastAPI(
     title="FirstChat API",
     description="API for generating personalized first messages for dating apps",
-    version="1.0.0",
+    version="1.0.1",
 )
+
+# Create logs directory if it doesn't exist
+logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+os.makedirs(logs_dir, exist_ok=True)
 
 # Add CORS middleware for frontend integration
 app.add_middleware(
@@ -161,6 +166,58 @@ async def generate_message(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating message: {str(e)}"
+        )
+
+# Add endpoint to view logs
+@app.get(
+    "/logs", 
+    response_model=List[str],
+    summary="List available log files",
+    description="Returns a list of available API request log files"
+)
+async def list_logs(env_check: bool = Depends(verify_environment)):
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    try:
+        files = [f for f in os.listdir(log_dir) if f.startswith("api_requests_") and f.endswith(".jsonl")]
+        return sorted(files, reverse=True)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error listing log files: {str(e)}"
+        )
+
+@app.get(
+    "/logs/{filename}", 
+    response_model=List[Dict[str, Any]],
+    summary="Get log file contents",
+    description="Returns the contents of a specific log file"
+)
+async def get_log_file(filename: str, env_check: bool = Depends(verify_environment)):
+    if not filename.startswith("api_requests_") or not filename.endswith(".jsonl"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid log filename format"
+        )
+    
+    log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", filename)
+    
+    if not os.path.exists(log_file):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Log file not found"
+        )
+    
+    try:
+        entries = []
+        with open(log_file, 'r') as f:
+            for line in f:
+                if line.strip():
+                    entries.append(json.loads(line))
+        return entries
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error reading log file: {str(e)}"
         )
 
 # Run the API server if executed as main module
