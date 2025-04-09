@@ -1220,16 +1220,14 @@ def get_scraped_profiles() -> List[Dict[str, Any]]:
             # Extract timestamp from directory name
             timestamp = profile_dir.split('_')[-1] if '_' in profile_dir else None
             
-            # Get profile images
-            image_paths = []
-            if profile_data.get("successful_image_paths"):
-                # Use successfully downloaded images if available
-                image_paths = [os.path.join("/profile", profile_dir, os.path.basename(img_path)) 
-                              for img_path in profile_data.get("successful_image_paths")]
-            elif profile_data.get("image_local_paths"):
-                # Otherwise use local paths
-                image_paths = [os.path.join("/profile", profile_dir, os.path.basename(img_path)) 
-                              for img_path in profile_data.get("image_local_paths")]
+            # Get profile images - use direct URLs from labeled_image_urls
+            image_urls = []
+            if profile_data.get("labeled_image_urls"):
+                # Use the direct URLs from the profile data
+                image_urls = list(profile_data.get("labeled_image_urls").values())
+            elif profile_data.get("image_urls"):
+                # Fallback to regular image_urls if available
+                image_urls = profile_data.get("image_urls")
                 
             # Check if there's a FirstChat message
             has_message = os.path.exists(os.path.join(SCRAPED_PROFILES_FOLDER, profile_dir, "firstchat_message.json"))
@@ -1239,10 +1237,10 @@ def get_scraped_profiles() -> List[Dict[str, Any]]:
                 "id": profile_dir,
                 "name": profile_data.get("name"),
                 "age": profile_data.get("age", 0),
-                "image_count": len(image_paths),
+                "image_count": len(image_urls),
                 "interest_count": len(profile_data.get("interests", [])),
                 "date": datetime.fromtimestamp(int(timestamp)) if timestamp and timestamp.isdigit() else "Unknown",
-                "main_image": image_paths[0] if image_paths else "/static/placeholder.png",
+                "main_image": image_urls[0] if image_urls else "/static/placeholder.png",
                 "has_message": has_message,
                 "is_latest": False  # Will set this on the latest profile later
             }
@@ -1275,16 +1273,14 @@ def get_profile_details(profile_id: str) -> Optional[Dict[str, Any]]:
         with open(profile_path, 'r', encoding='utf-8') as f:
             profile_data = json.load(f)
             
-        # Get profile images
-        image_paths = []
-        if profile_data.get("successful_image_paths"):
-            # Use successfully downloaded images if available
-            image_paths = [os.path.join("/profile", profile_id, os.path.basename(img_path)) 
-                          for img_path in profile_data.get("successful_image_paths")]
-        elif profile_data.get("image_local_paths"):
-            # Otherwise use local paths
-            image_paths = [os.path.join("/profile", profile_id, os.path.basename(img_path)) 
-                          for img_path in profile_data.get("image_local_paths")]
+        # Get profile images - use direct URLs from labeled_image_urls
+        image_urls = []
+        
+        # Use labeled image URLs directly
+        if profile_data.get("labeled_image_urls"):
+            image_urls = list(profile_data.get("labeled_image_urls").values())
+        elif profile_data.get("image_urls"):
+            image_urls = profile_data.get("image_urls")
             
         # Create detailed profile
         detailed_profile = {
@@ -1293,8 +1289,10 @@ def get_profile_details(profile_id: str) -> Optional[Dict[str, Any]]:
             "age": profile_data.get("age", 0),
             "interests": profile_data.get("interests", []),
             "sections": profile_data.get("profile_sections", {}),
-            "images": image_paths,
-            "main_image": image_paths[0] if image_paths else "/static/placeholder.png",
+            "images": image_urls,
+            "main_image": image_urls[0] if image_urls else "/static/placeholder.png",
+            "labeled_image_urls": profile_data.get("labeled_image_urls", {}),  # Include full labeled images dictionary
+            "image_urls": profile_data.get("image_urls", [])  # Include original image URLs as backup
         }
         
         return detailed_profile
@@ -1410,44 +1408,33 @@ def generate_message():
             return jsonify({"status": "error", "error": "Profile not found"}), 404
             
         # Get images - either from form or use the first two from the profile
-        image1_path = request.form.get('image1')
-        image2_path = request.form.get('image2')
+        image1_url = request.form.get('image1')
+        image2_url = request.form.get('image2')
         
-        if not image1_path or not image2_path:
+        if not image1_url or not image2_url:
             if len(profile["images"]) > 0:
-                image1_path = profile["images"][0]
-                image2_path = profile["images"][1] if len(profile["images"]) > 1 else profile["images"][0]
+                # Always use "Profile Photo 1" for first image if available
+                if "labeled_image_urls" in profile and "Profile Photo 1" in profile["labeled_image_urls"]:
+                    image1_url = profile["labeled_image_urls"]["Profile Photo 1"]
+                else:
+                    image1_url = profile["images"][0]
+                    
+                # For second image, either use a provided one or pick one randomly from the rest
+                if len(profile["images"]) > 1:
+                    other_images = [url for url in profile["images"] if url != image1_url]
+                    image2_url = random.choice(other_images)
+                else:
+                    image2_url = image1_url
             else:
                 return jsonify({"status": "error", "error": "No images available"}), 400
                 
-        # Process images - could be paths or URLs
-        image1_data = None
-        image2_data = None
-        
-        # Handle different image formats
-        if image1_path.startswith('data:'):
-            # Already base64 encoded
-            image1_data = image1_path
-        elif image1_path.startswith(('http://', 'https://')):
-            # URL - download and encode
-            image1_data = download_and_encode_image(image1_path)
-        else:
-            # Local path - encode
-            image1_data = encode_image_to_base64(image1_path)
-            
-        if image2_path.startswith('data:'):
-            # Already base64 encoded
-            image2_data = image2_path
-        elif image2_path.startswith(('http://', 'https://')):
-            # URL - download and encode
-            image2_data = download_and_encode_image(image2_path)
-        else:
-            # Local path - encode
-            image2_data = encode_image_to_base64(image2_path)
-            
-        if not image1_data or not image2_data:
-            return jsonify({"status": "error", "error": "Failed to process images"}), 400
-            
+        print(f"Using images: {image1_url} and {image2_url}")
+                
+        # URLs are already in the correct format for the API - the API client will handle downloading
+        # We just need to make sure they're valid URLs
+        if not image1_url.startswith(('http://', 'https://')) or not image2_url.startswith(('http://', 'https://')):
+            return jsonify({"status": "error", "error": "Invalid image URLs"}), 400
+                
         # Prepare match bio
         match_bio = {
             "name": profile["name"],
@@ -1469,8 +1456,8 @@ def generate_message():
         
         # Prepare request to FirstChat API
         request_data = {
-            "image1": image1_data,
-            "image2": image2_data,
+            "image1": image1_url,
+            "image2": image2_url,
             "user_bio": user_bio,
             "match_bio": match_bio,
             "sentence_count": sentence_count,
@@ -1479,16 +1466,21 @@ def generate_message():
         }
         
         # Call the API
+        print(f"Sending request to API: {API_URL}")
         response = requests.post(API_URL, json=request_data)
         
         if response.status_code != 200:
-            return jsonify({"status": "error", "error": f"API returned status code {response.status_code}"}), 500
+            error_msg = f"API returned status code {response.status_code}: {response.text}"
+            print(error_msg)
+            return jsonify({"status": "error", "error": error_msg}), 500
             
         # Parse the API response
         api_response = response.json()
         
         if api_response.get("status") != "success":
-            return jsonify({"status": "error", "error": "API returned an error"}), 500
+            error_msg = f"API returned an error: {api_response.get('error', 'Unknown error')}"
+            print(error_msg)
+            return jsonify({"status": "error", "error": error_msg}), 500
             
         # Get the generated message and other data
         message_data = api_response.get("data", {})
@@ -1500,6 +1492,8 @@ def generate_message():
         result_path = os.path.join(SCRAPED_PROFILES_FOLDER, profile_id, "firstchat_message.json")
         with open(result_path, 'w', encoding='utf-8') as f:
             json.dump(api_response, f, indent=2)
+        
+        print(f"Saved message to {result_path}")
             
         # Return success with the generated message
         return jsonify({
@@ -1514,7 +1508,9 @@ def generate_message():
         })
         
     except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
+        error_msg = f"Error generating message: {str(e)}"
+        print(error_msg)
+        return jsonify({"status": "error", "error": error_msg}), 500
 
 @app.route('/static/placeholder.png')
 def placeholder_image():

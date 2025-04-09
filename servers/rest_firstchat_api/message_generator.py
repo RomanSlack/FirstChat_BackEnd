@@ -24,10 +24,10 @@ dotenv.load_dotenv()
 async def analyze_image_async(image_data: str) -> List[str]:
     """
     Asynchronously analyzes image using Google Cloud Vision API.
-    Accepts base64 image data (string) and returns descriptive tags.
+    Accepts base64 encoded image data (string) or a URL and returns descriptive tags.
     
     Args:
-        image_data: Base64 encoded image data, may include data URI prefix
+        image_data: Base64 encoded image data or URL to image
         
     Returns:
         List of descriptive tags extracted from the image
@@ -39,16 +39,38 @@ async def analyze_image_async(image_data: str) -> List[str]:
         # Create vision client
         client = vision.ImageAnnotatorClient()
         
-        # Process base64 data - handle data URI format if present
-        if isinstance(image_data, str) and image_data.startswith('data:image'):
-            content = base64.b64decode(image_data.split(',')[1])
+        # Process input data - could be base64 or URL
+        if isinstance(image_data, str):
+            if image_data.startswith('data:image'):
+                # Handle data URI format
+                content = base64.b64decode(image_data.split(',')[1])
+                image = vision.Image(content=content)
+            elif image_data.startswith(('http://', 'https://')):
+                # Handle URL - download image content
+                print(f"Downloading image from URL: {image_data[:100]}...")
+                try:
+                    import requests
+                    response = requests.get(image_data, timeout=10)
+                    content = response.content
+                    image = vision.Image(content=content)
+                except Exception as download_error:
+                    print(f"Error downloading image: {download_error}")
+                    
+                    # Create image from URL directly as fallback
+                    image = vision.Image()
+                    image.source.image_uri = image_data
+            else:
+                # Try to decode as raw base64
+                try:
+                    content = base64.b64decode(image_data)
+                    image = vision.Image(content=content)
+                except:
+                    print("Could not process image data as base64, using default tags")
+                    return ["person", "portrait", "photo"]
         else:
-            # Already raw base64
-            content = base64.b64decode(image_data)
+            print("Invalid image data type, using default tags")
+            return ["person", "portrait", "photo"]
             
-        # Create vision Image object
-        image = vision.Image(content=content)
-        
         # Make API calls concurrently to improve performance
         label_future = loop.run_in_executor(
             None, 
@@ -88,7 +110,7 @@ async def analyze_image_async(image_data: str) -> List[str]:
         return descriptions[:3]  # Return top 3 descriptions
     except Exception as e:
         print(f"Error analyzing image with Google Cloud Vision: {e}")
-        return ["unknown"]
+        return ["person", "portrait", "photo"]  # Return generic tags as fallback
 
 
 async def filter_image_tags(image_descriptions: List[str]) -> List[str]:
