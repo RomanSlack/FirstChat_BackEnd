@@ -773,6 +773,10 @@ INDEX_HTML = """
                                         <input type="radio" id="tone-confident" name="tone" value="confident">
                                         <label for="tone-confident">Confident</label>
                                     </div>
+                                    <div class="radio-option">
+                                        <input type="radio" id="tone-unhinged" name="tone" value="unhinged">
+                                        <label for="tone-unhinged">Unhinged</label>
+                                    </div>
                                 </div>
                             </div>
                         </div>

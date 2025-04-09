@@ -443,6 +443,7 @@ Hey, I’m a 25-year-old architect with a passion for design, travel, and street
                   <div class="tone-option" data-tone="flirty">Flirty</div>
                   <div class="tone-option" data-tone="casual">Casual</div>
                   <div class="tone-option" data-tone="confident">Confident</div>
+                  <div class="tone-option" data-tone="unhinged">Unhinged</div>
               </div>
               <input type="hidden" id="tone" name="tone" value="friendly">
           </div>
@@ -1011,7 +1012,8 @@ def generate_message():
         "witty": "Add a touch of clever humor or playfulness, with a bit of wordplay or light teasing if appropriate.",
         "flirty": "Add a subtle flirtatious element while remaining respectful. Include a tasteful compliment if appropriate.",
         "casual": "Keep it very relaxed and conversational, like texting a friend. Use a laid-back style.",
-        "confident": "Write with a clear sense of self-assurance and directness, while remaining warm and engaging."
+        "confident": "Write with a clear sense of self-assurance and directness, while remaining warm and engaging.",
+        "unhinged": "Be boldly flirtatious, playful, and completely uninhibited while still being genuinely charming. Use humor that's edgy but never disrespectful. Be memorable and authentic in a way that stands out from typical dating messages."
     }
     
     tone_instruction = tone_instructions.get(tone, tone_instructions["friendly"])

@@ -200,7 +200,8 @@ async def generate_message_async(
         "witty": "Add a touch of clever humor or playfulness, with a bit of wordplay or light teasing if appropriate.",
         "flirty": "Add a subtle flirtatious element while remaining respectful. Include a tasteful compliment if appropriate.",
         "casual": "Keep it very relaxed and conversational, like texting a friend. Use a laid-back style.",
-        "confident": "Write with a clear sense of self-assurance and directness, while remaining warm and engaging."
+        "confident": "Write with a clear sense of self-assurance and directness, while remaining warm and engaging.",
+        "unhinged": "Be boldly flirtatious, playful, and completely uninhibited while still being genuinely charming. Use humor that's edgy but never disrespectful. Be memorable and authentic in a way that stands out from typical dating messages."
     }
     
     tone_instruction = tone_instructions.get(tone, tone_instructions["friendly"])
