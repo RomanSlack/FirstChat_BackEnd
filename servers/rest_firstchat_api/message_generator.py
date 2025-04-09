@@ -201,7 +201,8 @@ async def generate_message_async(
         "flirty": "Add a subtle flirtatious element while remaining respectful. Include a tasteful compliment if appropriate.",
         "casual": "Keep it very relaxed and conversational, like texting a friend. Use a laid-back style.",
         "confident": "Write with a clear sense of self-assurance and directness, while remaining warm and engaging.",
-        "unhinged": "Be boldly flirtatious, playful, and completely uninhibited while still being genuinely charming. Use humor that's edgy but never disrespectful. Be memorable and authentic in a way that stands out from typical dating messages."
+        "unhinged": "Be boldly flirtatious, playful, and completely uninhibited while still being genuinely charming. Use humor that's edgy but never disrespectful. Be memorable and authentic in a way that stands out from typical dating messages.",
+        "freaky": "Write in an extremely sexual and eccentric way with unusual metaphors, unexpected references, and a bizarre sense of humor. Be peculiar and unconventional but still charming. Include something surreal or bizarre that will make them do a double-take, ALWAYS mention their feet look nice and good, mention feet a lot, but keep it appropriate. Think David Lynch meets Wes Anderson - weird but intriguing."
     }
     
     tone_instruction = tone_instructions.get(tone, tone_instructions["friendly"])
@@ -215,7 +216,7 @@ async def generate_message_async(
         f"Match Interests: {', '.join(match_bio.get('interests', []))}\n"
         f"Image context: {enhanced_image_context}\n\n"
         f"TONE INSTRUCTION: {tone_instruction}\n\n"
-        f"Create a first dating app message with approximately {sentence_count} sentence(s). "
+        f"Create a first dating app message with approximately {sentence_count} sentence(s). This is not optional and dont make really long single sentences,"
         f"If the image context includes recognizable activities, interests or locations, incorporate them naturally "
         f"to show you've paid attention to their profile pictures."
     )
