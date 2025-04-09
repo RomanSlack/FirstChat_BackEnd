@@ -1019,6 +1019,13 @@ def generate_message():
     
     tone_instruction = tone_instructions.get(tone, tone_instructions["friendly"])
     
+    # Create custom sentence count instruction
+    sentence_instruction = ""
+    if sentence_count == 1:
+        sentence_instruction = "Create a brief, concise one-liner first message - just a single short sentence (maximum 20 words). Keep it punchy and to the point."
+    else:
+        sentence_instruction = f"Create a first dating app message with exactly {sentence_count} sentences. Make sure there are {sentence_count} distinct sentences, not one long run-on sentence."
+    
     prompt = (
         f"User Bio: {user_bio}\n"
         f"Match Bio: {match_bio.get('bio', '')}\n"
@@ -1027,7 +1034,7 @@ def generate_message():
         f"Match Interests: {', '.join(match_bio.get('interests', []))}\n"
         f"Image context: {enhanced_image_context}\n\n"
         f"TONE INSTRUCTION: {tone_instruction}\n\n"
-        f"Create a first dating app message with approximately {sentence_count} sentence(s). "
+        f"SENTENCE COUNT INSTRUCTION: {sentence_instruction}\n"
         f"If the image context includes recognizable activities, interests or locations, incorporate them naturally "
         f"to show you've paid attention to their profile pictures."
     )

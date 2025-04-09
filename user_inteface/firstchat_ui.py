@@ -894,6 +894,9 @@ INDEX_HTML = """
                     <button class="btn btn-secondary" id="back-to-settings-btn">
                         <i class="fas fa-arrow-left"></i> Back to Settings
                     </button>
+                    <button class="btn" id="regenerate-btn" style="background-color: #2563eb;">
+                        <i class="fas fa-sync-alt"></i> Regenerate
+                    </button>
                     <button class="btn" id="copy-message-btn" disabled>
                         <i class="fas fa-copy"></i> Copy Message
                     </button>
