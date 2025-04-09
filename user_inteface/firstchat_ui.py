@@ -789,10 +789,10 @@ INDEX_HTML = """
                             <div class="settings-group">
                                 <label>Message Length</label>
                                 <div class="slider-container">
-                                    <input type="range" min="1" max="5" value="2" class="slider" id="sentence-count" name="sentence_count">
+                                    <input type="range" min="1" max="5" value="1" class="slider" id="sentence-count" name="sentence_count">
                                     <div class="slider-labels">
                                         <span>Short</span>
-                                        <span id="sentence-value">2 sentences</span>
+                                        <span id="sentence-value">1 sentences</span>
                                         <span>Long</span>
                                     </div>
                                 </div>
@@ -1271,6 +1271,130 @@ INDEX_HTML = """
                     
                     document.querySelector('[data-tab="generate"]').classList.add('active');
                     document.getElementById('generate-tab').classList.add('active');
+                });
+            }
+            
+            // Regenerate button
+            const regenerateBtn = document.getElementById('regenerate-btn');
+            if (regenerateBtn) {
+                regenerateBtn.addEventListener('click', async () => {
+                    try {
+                        // Show loading state
+                        document.getElementById('message-result').innerHTML = `
+                            <div class="loading">
+                                <div class="spinner"></div>
+                                <p>Regenerating your message...</p>
+                            </div>
+                        `;
+                        
+                        document.getElementById('message-details').innerHTML = `
+                            <div class="loading">
+                                <div class="spinner"></div>
+                                <p>Loading details...</p>
+                            </div>
+                        `;
+                        
+                        // Re-send the same form data that was used before
+                        const formData = new FormData(messageForm);
+                        
+                        // Send request
+                        const response = await fetch('/generate', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Failed to regenerate message');
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.status === 'success') {
+                            // Update message result
+                            document.getElementById('message-result').innerHTML = `
+                                <div class="message-container">
+                                    <div class="message-text">${data.message}</div>
+                                    <button class="copy-btn" id="copy-btn" title="Copy to clipboard">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <div class="message-meta">
+                                        <span>Generated for: ${data.profile_name}</span>
+                                        <span>Generated at: ${new Date().toLocaleTimeString()}</span>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Enable copy button
+                            copyMessageBtn.disabled = false;
+                            
+                            // Set up copy functionality
+                            const copyBtn = document.getElementById('copy-btn');
+                            if (copyBtn) {
+                                copyBtn.addEventListener('click', () => {
+                                    navigator.clipboard.writeText(data.message).then(() => {
+                                        showToast('Message copied to clipboard!');
+                                    });
+                                });
+                            }
+                            
+                            // Update message details
+                            document.getElementById('message-details').innerHTML = `
+                                <div>
+                                    <div class="section-title">Image Analysis</div>
+                                    <div class="interests-list">
+                                        ${data.image_tags.map(tag => `<div class="interest-tag">${tag}</div>`).join('')}
+                                    </div>
+                                    
+                                    <div class="section-title" style="margin-top: 20px;">Settings Used</div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                                        <div>
+                                            <strong>Tone:</strong> ${data.tone.charAt(0).toUpperCase() + data.tone.slice(1)}
+                                        </div>
+                                        <div>
+                                            <strong>Length:</strong> ${data.sentence_count} sentence${data.sentence_count > 1 ? 's' : ''}
+                                        </div>
+                                        <div>
+                                            <strong>Creativity:</strong> ${data.creativity}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="section-title" style="margin-top: 20px;">Token Usage</div>
+                                    <div>
+                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                            <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-right: 10px;">
+                                                <div style="height: 100%; width: ${(data.token_usage.completion_tokens / data.token_usage.total_tokens * 100).toFixed(0)}%; background: var(--primary);"></div>
+                                            </div>
+                                            <div style="font-size: 13px; color: var(--text-gray); min-width: 100px; text-align: right;">
+                                                ${data.token_usage.completion_tokens} / ${data.token_usage.total_tokens}
+                                            </div>
+                                        </div>
+                                        <div style="font-size: 13px; color: var(--text-gray);">
+                                            <strong>Prompt tokens:</strong> ${data.token_usage.prompt_tokens} &nbsp;&nbsp; 
+                                            <strong>Response tokens:</strong> ${data.token_usage.completion_tokens} &nbsp;&nbsp;
+                                            <strong>Total:</strong> ${data.token_usage.total_tokens}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            showToast('Message regenerated successfully!');
+                        } else {
+                            throw new Error(data.error || 'Failed to regenerate message');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        document.getElementById('message-result').innerHTML = `
+                            <div style="padding: 20px; color: var(--error);">
+                                <i class="fas fa-exclamation-triangle"></i> ${error.message}
+                            </div>
+                        `;
+                        document.getElementById('message-details').innerHTML = `
+                            <div style="padding: 20px; color: var(--error);">
+                                <i class="fas fa-exclamation-triangle"></i> Failed to load details
+                            </div>
+                        `;
+                        showToast(error.message, true);
+                    }
                 });
             }
             
