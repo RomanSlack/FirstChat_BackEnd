@@ -36,6 +36,36 @@ async def encode_image_to_base64(image_path: str) -> Optional[str]:
         return None
 
 
+async def fetch_and_encode_image(url: str) -> Optional[str]:
+    """
+    Fetch image from URL and encode it to base64.
+    
+    Args:
+        url: URL of the image
+        
+    Returns:
+        Base64 encoded string of the image or None if failed
+    """
+    try:
+        logger.info(f"Fetching image from URL: {url[:100]}...")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url)
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch image: HTTP {response.status_code}")
+                return None
+                
+            content_type = response.headers.get("content-type", "")
+            if not content_type.startswith("image/"):
+                logger.error(f"URL did not return an image: {content_type}")
+                return None
+                
+            encoded_string = base64.b64encode(response.content).decode("utf-8")
+            return f"data:image;base64,{encoded_string}"
+    except Exception as e:
+        logger.error(f"Error fetching and encoding image from URL: {str(e)}")
+        return None
+
+
 async def prepare_api_request(profile_data: Dict[str, Any], user_bio: str) -> Optional[Dict[str, Any]]:
     """
     Prepare request data for the FirstChat API from scraped profile data.
@@ -67,31 +97,70 @@ async def prepare_api_request(profile_data: Dict[str, Any], user_bio: str) -> Op
         
         match_bio["bio"] = "\n".join(bio_text)
         
-        # Get profile photo paths
+        # Get image data - try multiple methods
+        logger.info("Attempting to get profile images using multiple methods")
+        
+        # First try: Check if we have downloaded images
         image_paths = profile_data.get("image_local_paths", [])
         successful_images = profile_data.get("successful_image_paths", [])
         
         # Use successful downloads if available, otherwise try with available paths
         available_images = successful_images if successful_images else image_paths
+        image1_encoded = None
+        image2_encoded = None
         
-        if not available_images or len(available_images) < 1:
-            logger.error("No images available to send to API")
+        # Method 1: Try to use local downloaded files
+        if available_images and len(available_images) > 0:
+            logger.info(f"Trying to use local image files: {len(available_images)} available")
+            # Always use the first image (Profile Photo 1)
+            image1_path = available_images[0]
+            
+            # Randomly select a second image from the remaining ones
+            remaining_images = available_images[1:] if len(available_images) > 1 else [available_images[0]]
+            image2_path = random.choice(remaining_images)
+            
+            # Try to encode images to base64
+            image1_encoded = await encode_image_to_base64(image1_path)
+            image2_encoded = await encode_image_to_base64(image2_path)
+        
+        # Method 2: If local files don't work, try using the URLs directly
+        if not image1_encoded or not image2_encoded:
+            logger.info("Local image files not available or failed to encode, trying image URLs")
+            labeled_image_urls = profile_data.get("labeled_image_urls", {})
+            
+            if labeled_image_urls and "Profile Photo 1" in labeled_image_urls:
+                logger.info("Found labeled image URLs, using those")
+                image1_url = labeled_image_urls["Profile Photo 1"]
+                
+                # Get all non-first images
+                other_profile_images = [url for key, url in labeled_image_urls.items() if key != "Profile Photo 1"]
+                
+                # If we have other images, pick a random one, otherwise use the first one again
+                image2_url = random.choice(other_profile_images) if other_profile_images else image1_url
+                
+                # Fetch and encode images
+                image1_encoded = await fetch_and_encode_image(image1_url)
+                image2_encoded = await fetch_and_encode_image(image2_url)
+                
+            # Method 3: Try with unlabeled image URLs as last resort
+            elif profile_data.get("image_urls", []):
+                logger.info("Trying with unlabeled image URLs")
+                image_urls = profile_data.get("image_urls", [])
+                
+                if image_urls and len(image_urls) > 0:
+                    image1_url = image_urls[0]
+                    image2_url = random.choice(image_urls[1:]) if len(image_urls) > 1 else image_urls[0]
+                    
+                    # Fetch and encode images
+                    image1_encoded = await fetch_and_encode_image(image1_url)
+                    image2_encoded = await fetch_and_encode_image(image2_url)
+        
+        # Check if we have successfully encoded images
+        if not image1_encoded or not image2_encoded:
+            logger.error("Failed to encode images using any method")
             return None
             
-        # Always use the first image (Profile Photo 1)
-        image1_path = available_images[0]
-        
-        # Randomly select a second image from the remaining ones
-        remaining_images = available_images[1:] if len(available_images) > 1 else [available_images[0]]
-        image2_path = random.choice(remaining_images)
-        
-        # Encode images to base64
-        image1_encoded = await encode_image_to_base64(image1_path)
-        image2_encoded = await encode_image_to_base64(image2_path)
-        
-        if not image1_encoded or not image2_encoded:
-            logger.error("Failed to encode one or both images")
-            return None
+        logger.info("Successfully encoded both images")
             
         # Prepare the API request
         request_data = {

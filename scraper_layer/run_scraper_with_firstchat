@@ -2,7 +2,7 @@
 # Run the Tinder Profile Scraper with FirstChat API integration
 
 # Set default user bio if not provided
-DEFAULT_USER_BIO="I'm a software engineer who loves hiking, cooking, and playing guitar. I enjoy traveling to new places and trying different cuisines. Looking for someone to share adventures with!"
+DEFAULT_USER_BIO="I am a software engineer who loves hiking, cooking, and playing guitar. I enjoy traveling to new places and trying different cuisines. Looking for someone to share adventures with!"
 
 # Navigate to the script directory
 cd "$(dirname "$0")"
