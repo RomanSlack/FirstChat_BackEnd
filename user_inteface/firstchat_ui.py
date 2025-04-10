@@ -35,7 +35,7 @@ SCRAPED_PROFILES_FOLDER = os.path.join(SCRAPER_FOLDER, "scraped_profiles")
 API_URL = "http://localhost:8002/generate_message"
 
 # Default user bio
-DEFAULT_USER_BIO = "I am a software engineer who loves hiking, cooking, and playing guitar. I enjoy traveling to new places and trying different cuisines. Looking for someone to share adventures with!"
+DEFAULT_USER_BIO = "I am a 18 yr old male living in Rochester NY, I am currently a CS student at The Rochester Institute of Technology, I enjoy mountaineering, working out, trail running, camping, learning languages (Chinese, Spanish), working on AI projects . I am also looking for a long term partner who shares my ideals of a healthy balanced life full of exploration and ambition. Straight, 5 foot 11 inches."
 
 # HTML template for the main page
 INDEX_HTML = """
@@ -774,12 +774,8 @@ INDEX_HTML = """
                                         <label for="tone-confident">Confident</label>
                                     </div>
                                     <div class="radio-option">
-                                        <input type="radio" id="tone-unhinged" name="tone" value="unhinged">
-                                        <label for="tone-unhinged">Unhinged</label>
-                                    </div>
-                                    <div class="radio-option">
-                                        <input type="radio" id="tone-freaky" name="tone" value="freaky">
-                                        <label for="tone-freaky">Freaky</label>
+                                        <input type="radio" id="tone-compliment" name="tone" value="compliment">
+                                        <label for="tone-compliment">Compliment</label>
                                     </div>
                                 </div>
                             </div>

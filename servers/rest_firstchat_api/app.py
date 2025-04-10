@@ -64,12 +64,12 @@ class MessageRequest(BaseModel):
     user_bio: str = Field(..., description="User's profile bio text")
     match_bio: MatchBio = Field(..., description="Match's profile information")
     sentence_count: int = Field(2, description="Number of sentences in the message", ge=1, le=5)
-    tone: str = Field("friendly", description="Message tone (friendly, witty, flirty, casual, confident, unhinged, freaky)")
+    tone: str = Field("friendly", description="Message tone (friendly, witty, flirty, casual, confident, compliment)")
     creativity: float = Field(0.7, description="Creativity level (0.0 to 1.0)", ge=0.0, le=1.0)
     
     @validator('tone')
     def validate_tone(cls, v):
-        valid_tones = ["friendly", "witty", "flirty", "casual", "confident", "unhinged", "freaky"]
+        valid_tones = ["friendly", "witty", "flirty", "casual", "confident", "compliment"]
         if v.lower() not in valid_tones:
             raise ValueError(f"Tone must be one of: {', '.join(valid_tones)}")
         return v.lower()

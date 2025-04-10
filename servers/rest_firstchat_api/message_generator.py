@@ -166,7 +166,7 @@ async def generate_message_async(
         user_bio: User's profile bio text
         match_bio: Match's profile information as a dictionary
         sentence_count: Target number of sentences in generated message
-        tone: Message tone (friendly, witty, flirty, casual, confident)
+        tone: Message tone (friendly, witty, flirty, casual, confident, compliment)
         creativity: Creativity level from 0.0 to 1.0
         
     Returns:
@@ -196,15 +196,19 @@ async def generate_message_async(
     
     # Define tone instructions based on selected tone
     tone_instructions = {
-        "friendly": "Keep the tone warm and personable, like talking to a potential friend. Be genuine and approachable.",
-        "witty": "Add a touch of clever humor or playfulness, with a bit of wordplay or light teasing if appropriate.",
-        "flirty": "Add a subtle flirtatious element while remaining respectful. Include a tasteful compliment if appropriate.",
-        "casual": "Keep it very relaxed and conversational, like texting a friend. Use a laid-back style.",
-        "confident": "Write with a clear sense of self-assurance and directness, while remaining warm and engaging.",
-        "unhinged": "Be boldly flirtatious, playful, and completely uninhibited while still being genuinely charming. Use humor that's edgy but never disrespectful. Be memorable and authentic in a way that stands out from typical dating messages.",
-        "freaky": "Mention their feet and how nice their feet look in some kind way, this is a requirement, Write in an flirty and eccentric way while making them comfortable, and a bizarre sense of humor. Make them like you as an ice breaker but mention their feet, keep it almost rated R. weird but intriguing."
+        "friendly": "Write in a naturally chill and friendly way, like you're genuinely interested in chatting casually. Keep it simple, approachable, and authentic—think texting someone you'd like to be friends with.",
+
+        "witty": "Keep it playful and clever without forcing jokes. Aim for a subtle sense of humor or quick observation that's smart but casual, like you’re chatting with someone you're comfortable with.",
+
+        "flirty": "Stay lightly flirtatious but respectful and tasteful. Give a genuine, subtle compliment or playful comment naturally inspired by their profile—nothing overly forward or awkward.",
+
+        "casual": "Write as if you’re just naturally starting a low-pressure, relaxed conversation. Imagine texting someone you know a bit already—be chill, straightforward, and real.",
+
+        "confident": "Speak clearly and with easy-going self-assurance, but stay warm and friendly. Keep your message direct and genuine, reflecting quiet confidence without coming across as arrogant or intense.",
+
+        "compliment": "Give one thoughtful, specific compliment clearly inspired by their profile photos or bio. Keep it simple, sincere, and Gen Z authentic—nothing generic or exaggerated. Talk casually like an 18–20-year-old would naturally compliment someone they genuinely noticed."
     }
-    
+
     tone_instruction = tone_instructions.get(tone, tone_instructions["friendly"])
     
     # Construct prompt for OpenAI
@@ -238,11 +242,11 @@ async def generate_message_async(
     
     # Generate message with OpenAI
     completion = await client.chat.completions.create(
-        model="gpt-4o-mini-2024-07-18",  # Can be configurable in production gpt-4o-mini-2024-07-18
+        model="gpt-4.5-preview-2025-02-27",  # Can be configurable in production gpt-4o-mini-2024-07-18
         messages=[
             {
                 "role": "system", 
-                "content": "You are an expert dating app first message generator for men messaging women. Your specialty is creating authentic, genuine first messages that don't sound generic or fake. Pay close attention to the image context provided and incorporate those details naturally to show you've actually looked at their profile. Adapt your tone based on the match's age - younger (18-24) should be more casual and playful, mid-range (25-35) balanced and interesting, older (36+) slightly more mature but still fun. When referencing image details, be specific rather than vague. Absolutely never create details that weren't mentioned (like fake names or invented scenarios). Include only 1 question maximum, placed at the end. Keep your messages conversational and genuine - write as a real person would text, not like marketing copy. Do not use emojis or be creepy."
+                "content": "You're a chill, genuine Gen Z guy (around 18) crafting an engaging first message to a girl on a dating app. Your style is conversational, playful, and a bit witty—like texting a friend you're interested in, not writing a formal intro. Always reference only specific details clearly provided in the image tags or bio, making it obvious you genuinely paid attention without sounding overly detailed or stalkerish. Never assume or invent details about images; only mention activities, locations, or context explicitly described in the provided image tags. In 'compliment' mode, offer a thoughtful, specific compliment based solely on the image details explicitly provided. Keep your language casual and authentic, exactly how a real Gen Z young adult texts someone they’re interested in. Use current Gen Z slang naturally, but stay genuine. End each message with one relevant and engaging question to smoothly open a conversation. Absolutely no emojis, no guessing or assuming details, and nothing creepy."
             },
             {
                 "role": "user", 
@@ -278,7 +282,7 @@ async def generate_message_async(
         "image_tags": filtered_tags,
         "match_bio": match_bio,
         "user_bio": user_bio,
-        "system_prompt": "You are an expert dating app first message generator for men messaging women. Your specialty is creating authentic, genuine first messages that don't sound generic or fake. Pay close attention to the image context provided and incorporate those details naturally to show you've actually looked at their profile. Adapt your tone based on the match's age - younger (18-24) should be more casual and playful, mid-range (25-35) balanced and interesting, older (36+) slightly more mature but still fun. When referencing image details, be specific rather than vague. Absolutely never create details that weren't mentioned (like fake names or invented scenarios). Include only 1 question maximum, placed at the end. Keep your messages conversational and genuine - write as a real person would text, not like marketing copy. Do not use emojis or be creepy.",
+        "system_prompt": "You're a chill, genuine Gen Z guy (around 18) crafting an engaging first message to a girl on a dating app. Your style is naturally conversational, playful, and a little witty—think casual texts between friends, not formal intros. Always reference specific, real details clearly visible from her profile pictures or bio, making it obvious you paid attention without sounding stalkerish. Pay special attention to details in the images and highlight something genuinely interesting or unique about them in a respectful way. When in 'compliment' mode, focus primarily on giving a thoughtful, specific compliment based on what you can see in their photos. Your message should sound exactly how a real Gen Z young adult would text someone they're interested in, casual yet engaging. Use current Gen Z language patterns and slang where appropriate, but stay authentic. End with one relevant, interesting question to spark conversation. Absolutely no emojis, no made-up details, and definitely nothing creepy.",
         "settings": {
             "sentence_count": sentence_count,
             "tone": tone,
