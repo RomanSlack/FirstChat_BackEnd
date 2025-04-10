@@ -2,7 +2,7 @@
 message_generator.py
 
 Core functionality for the First Chat message generation service:
-- Image analysis with Google Cloud Vision
+- Image analysis with Clarifai image captioning
 - OpenAI message generation
 - Async processing to ensure scalability
 
@@ -13,139 +13,105 @@ import os
 import base64
 import json
 import time
+import requests
 from typing import List, Dict, Any, Optional, Tuple, Union
 import asyncio
 
-from google.cloud import vision
+from clarifai.client.model import Model
 from openai import AsyncOpenAI
 import dotenv
 dotenv.load_dotenv()
 
+# Clarifai API key loaded from environment
+CLARIFAI_PAT = os.environ.get("CLARIFAI_PAT")
+CLARIFAI_MODEL_URL = "https://clarifai.com/salesforce/blip/models/general-english-image-caption-blip-2-6_7B"
+
 async def analyze_image_async(image_data: str) -> List[str]:
     """
-    Asynchronously analyzes image using Google Cloud Vision API.
-    Accepts base64 encoded image data (string) or a URL and returns descriptive tags.
+    Asynchronously analyzes image using Clarifai image captioning model.
+    Accepts base64 encoded image data (string) or a URL and returns descriptive captions.
     
     Args:
         image_data: Base64 encoded image data or URL to image
         
     Returns:
-        List of descriptive tags extracted from the image
+        List of descriptive sentences about the image
     """
     try:
-        # Use asyncio to prevent blocking I/O during API calls
-        loop = asyncio.get_event_loop()
-        
-        # Create vision client
-        client = vision.ImageAnnotatorClient()
-        
-        # Process input data - could be base64 or URL
+        # Process based on input type
         if isinstance(image_data, str):
             if image_data.startswith('data:image'):
-                # Handle data URI format
-                content = base64.b64decode(image_data.split(',')[1])
-                image = vision.Image(content=content)
+                # Handle data URI format - need to save as temp file or use file bytes for Clarifai
+                image_bytes = base64.b64decode(image_data.split(',')[1])
+                # Use asyncio to run Clarifai prediction in non-blocking way
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    lambda: Model(url=CLARIFAI_MODEL_URL, pat=CLARIFAI_PAT).predict_by_bytes(
+                        image_bytes, 
+                        input_type="image"
+                    )
+                )
             elif image_data.startswith(('http://', 'https://')):
-                # Handle URL - download image content
-                print(f"Downloading image from URL: {image_data[:100]}...")
-                try:
-                    import requests
-                    response = requests.get(image_data, timeout=10)
-                    content = response.content
-                    image = vision.Image(content=content)
-                except Exception as download_error:
-                    print(f"Error downloading image: {download_error}")
-                    
-                    # Create image from URL directly as fallback
-                    image = vision.Image()
-                    image.source.image_uri = image_data
+                # Handle URL
+                print(f"Analyzing image from URL: {image_data[:100]}...")
+                # Use asyncio to run Clarifai prediction in non-blocking way
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    lambda: Model(url=CLARIFAI_MODEL_URL, pat=CLARIFAI_PAT).predict_by_url(
+                        image_data
+                    )
+                )
             else:
                 # Try to decode as raw base64
                 try:
-                    content = base64.b64decode(image_data)
-                    image = vision.Image(content=content)
-                except:
-                    print("Could not process image data as base64, using default tags")
-                    return ["person", "portrait", "photo"]
+                    image_bytes = base64.b64decode(image_data)
+                    loop = asyncio.get_event_loop()
+                    result = await loop.run_in_executor(
+                        None,
+                        lambda: Model(url=CLARIFAI_MODEL_URL, pat=CLARIFAI_PAT).predict_by_bytes(
+                            image_bytes, 
+                            input_type="image"
+                        )
+                    )
+                except Exception as e:
+                    print(f"Error decoding base64 data: {e}")
+                    return ["A person in a portrait photo"]
         else:
-            print("Invalid image data type, using default tags")
-            return ["person", "portrait", "photo"]
-            
-        # Make API calls concurrently to improve performance
-        label_future = loop.run_in_executor(
-            None, 
-            lambda: client.label_detection(image=image)
-        )
+            print("Invalid image data type")
+            return ["A person in a portrait photo"]
         
-        landmark_future = loop.run_in_executor(
-            None,
-            lambda: client.landmark_detection(image=image)
-        )
+        # Extract caption text from Clarifai response
+        caption = result.outputs[0].data.text.raw
         
-        web_future = loop.run_in_executor(
-            None,
-            lambda: client.web_detection(image=image)
-        )
+        # Return the caption as a list with one item - the full caption text
+        # This maintains compatibility with the rest of the codebase
+        return [caption] if caption else ["A person in a portrait photo"]
         
-        # Await all API responses
-        label_response = await label_future
-        landmark_response = await landmark_future
-        web_response = await web_future
-        
-        # Process label results
-        labels = label_response.label_annotations
-        label_descriptions = [label.description for label in labels[:3]]
-        
-        # Process landmark results
-        landmarks = landmark_response.landmark_annotations
-        landmark_descriptions = [landmark.description for landmark in landmarks] if landmarks else []
-        
-        # Process web detection results
-        web_detection = web_response.web_detection
-        web_entities = web_detection.web_entities if web_detection else []
-        web_descriptions = [entity.description for entity in web_entities if entity.description] if web_entities else []
-        
-        # Combine and filter unique descriptions
-        descriptions = list(set(label_descriptions + landmark_descriptions + web_descriptions))
-        return descriptions[:3]  # Return top 3 descriptions
     except Exception as e:
-        print(f"Error analyzing image with Google Cloud Vision: {e}")
-        return ["person", "portrait", "photo"]  # Return generic tags as fallback
+        print(f"Error analyzing image with Clarifai: {e}")
+        return ["A person in a portrait photo"]  # Return generic caption as fallback
 
 
-async def filter_image_tags(image_descriptions: List[str]) -> List[str]:
+async def process_image_captions(captions: List[str]) -> List[str]:
     """
-    Intelligently filters image tags to prioritize specific concepts over generic ones.
+    Processes the image captions to ensure we have useful descriptions.
     
     Args:
-        image_descriptions: List of image tags from vision API
+        captions: List of image captions from Clarifai
         
     Returns:
-        Filtered list of the most relevant tags
+        Processed list of captions
     """
-    # Define generic concepts that should only be included if more specific ones aren't available
-    generic_concepts = ["nature", "person", "photography", "landscape", "portrait"]
+    # Filter out empty or very short captions
+    valid_captions = [caption for caption in captions if caption and len(caption) > 5]
     
-    filtered_tags = []
+    # If no valid captions, return a generic one
+    if not valid_captions:
+        return ["A photo of a person"]
     
-    # First add specific tags that aren't generic concepts
-    for tag in image_descriptions:
-        if tag.lower() not in generic_concepts:
-            filtered_tags.append(tag)
-    
-    # Then add generic concepts only if we don't have enough specific tags
-    if len(filtered_tags) < 2:
-        for tag in image_descriptions:
-            if tag.lower() in generic_concepts and tag not in filtered_tags:
-                filtered_tags.append(tag)
-                if len(filtered_tags) >= 3:
-                    break
-    
-    # If we still don't have tags, use the original ones
-    if not filtered_tags and image_descriptions:
-        filtered_tags = image_descriptions
-        
-    return filtered_tags
+    return valid_captions
 
 
 async def generate_message_async(
@@ -173,36 +139,40 @@ async def generate_message_async(
         Dict containing generated message, image tags, and token usage statistics
     """
     # Process both images concurrently
-    tags1_task = analyze_image_async(image1_data)
-    tags2_task = analyze_image_async(image2_data)
+    captions1_task = analyze_image_async(image1_data)
+    captions2_task = analyze_image_async(image2_data)
     
     # Await image analysis results
-    tags1 = await tags1_task
-    tags2 = await tags2_task
+    captions1 = await captions1_task
+    captions2 = await captions2_task
     
-    # Combine and deduplicate image descriptions
-    image_descriptions = list(set(tags1 + tags2))
+    # Process the captions
+    processed_captions1 = await process_image_captions(captions1)
+    processed_captions2 = await process_image_captions(captions2)
     
-    # Filter tags for relevance
-    filtered_tags = await filter_image_tags(image_descriptions)
-    enhanced_image_context = ", ".join(filtered_tags)
+    # Combine image descriptions for the prompt
+    image_context = "\nImage 1: " + ". ".join(processed_captions1)
+    image_context += "\nImage 2: " + ". ".join(processed_captions2)
     
-    # Debug image tags
-    print("=== IMAGE ANNOTATION DETAILS ===")
-    print(f"Image 1 tags: {tags1}")
-    print(f"Image 2 tags: {tags2}")
-    print(f"Filtered image context: {enhanced_image_context}")
-    print("===============================")
+    # For UI display purposes, keep a combined list of all captions
+    all_captions = processed_captions1 + processed_captions2
+    
+    # Debug image captions
+    print("=== IMAGE CAPTIONING DETAILS ===")
+    print(f"Image 1 caption: {processed_captions1}")
+    print(f"Image 2 caption: {processed_captions2}")
+    print(f"Combined image context: {image_context}")
+    print("================================")
     
     # Define tone instructions based on selected tone
     tone_instructions = {
         "friendly": "Write in a naturally chill and friendly way, like you're genuinely interested in chatting casually. Keep it simple, approachable, and authentic—think texting someone you'd like to be friends with.",
 
-        "witty": "Keep it playful and clever without forcing jokes. Aim for a subtle sense of humor or quick observation that's smart but casual, like you’re chatting with someone you're comfortable with.",
+        "witty": "Keep it playful and clever without forcing jokes. Aim for a subtle sense of humor or quick observation that's smart but casual, like you're chatting with someone you're comfortable with.",
 
         "flirty": "Stay lightly flirtatious but respectful and tasteful. Give a genuine, subtle compliment or playful comment naturally inspired by their profile—nothing overly forward or awkward.",
 
-        "casual": "Write as if you’re just naturally starting a low-pressure, relaxed conversation. Imagine texting someone you know a bit already—be chill, straightforward, and real.",
+        "casual": "Write as if you're just naturally starting a low-pressure, relaxed conversation. Imagine texting someone you know a bit already—be chill, straightforward, and real.",
 
         "confident": "Speak clearly and with easy-going self-assurance, but stay warm and friendly. Keep your message direct and genuine, reflecting quiet confidence without coming across as arrogant or intense.",
 
@@ -225,11 +195,10 @@ async def generate_message_async(
         f"Match Name: {match_bio.get('name', '')}\n"
         f"Match Age: {match_bio.get('age', '')}\n"
         f"Match Interests: {', '.join(match_bio.get('interests', []))}\n"
-        f"Image context: {enhanced_image_context}\n\n"
+        f"Image descriptions: {image_context}\n\n"
         f"TONE INSTRUCTION: {tone_instruction}\n\n"
         f"SENTENCE COUNT INSTRUCTION: {sentence_instruction}\n"
-        f"If the image context includes recognizable activities, interests or locations, incorporate them naturally "
-        f"to show you've paid attention to their profile pictures."
+        f"Reference specific details from the image descriptions to show you've paid attention to their profile pictures."
     )
     
     # Get API key for OpenAI
@@ -246,7 +215,7 @@ async def generate_message_async(
         messages=[
             {
                 "role": "system", 
-                "content": "You're a chill, genuine Gen Z guy (around 18) crafting an engaging first message to a girl on a dating app. Your style is conversational, playful, and a bit witty—like texting a friend you're interested in, not writing a formal intro. Always reference only specific details clearly provided in the image tags or bio, making it obvious you genuinely paid attention without sounding overly detailed or stalkerish. Never assume or invent details about images; only mention activities, locations, or context explicitly described in the provided image tags. In 'compliment' mode, offer a thoughtful, specific compliment based solely on the image details explicitly provided. Keep your language casual and authentic, exactly how a real Gen Z young adult texts someone they’re interested in. Use current Gen Z slang naturally, but stay genuine. End each message with one relevant and engaging question to smoothly open a conversation. Absolutely no emojis, no guessing or assuming details, and nothing creepy."
+                "content": "You're a chill, genuine Gen Z guy (around 18) crafting an engaging first message to a girl on a dating app. Your style is conversational, playful, and a bit witty—like texting a friend you're interested in, not writing a formal intro. Always reference only specific details clearly provided in the image descriptions or bio, making it obvious you genuinely paid attention without sounding overly detailed or stalkerish. Never assume or invent details about images; only mention activities, locations, or context explicitly described in the provided image descriptions. In 'compliment' mode, offer a thoughtful, specific compliment based solely on the image details explicitly provided. Keep your language casual and authentic, exactly how a real Gen Z young adult texts someone they're interested in. Use current Gen Z slang naturally, but stay genuine. End each message with one relevant and engaging question to smoothly open a conversation. Absolutely no emojis, no guessing or assuming details, and nothing creepy."
             },
             {
                 "role": "user", 
@@ -279,15 +248,15 @@ async def generate_message_async(
         "timestamp": time.time(),
         "prompt": prompt,
         "completion": generated_message,
-        "image_tags": filtered_tags,
+        "image_captions": all_captions,
         "match_bio": match_bio,
         "user_bio": user_bio,
-        "system_prompt": "You're a chill, genuine Gen Z guy (around 18) crafting an engaging first message to a girl on a dating app. Your style is naturally conversational, playful, and a little witty—think casual texts between friends, not formal intros. Always reference specific, real details clearly visible from her profile pictures or bio, making it obvious you paid attention without sounding stalkerish. Pay special attention to details in the images and highlight something genuinely interesting or unique about them in a respectful way. When in 'compliment' mode, focus primarily on giving a thoughtful, specific compliment based on what you can see in their photos. Your message should sound exactly how a real Gen Z young adult would text someone they're interested in, casual yet engaging. Use current Gen Z language patterns and slang where appropriate, but stay authentic. End with one relevant, interesting question to spark conversation. Absolutely no emojis, no made-up details, and definitely nothing creepy.",
+        "system_prompt": "You're a chill, genuine Gen Z guy (around 18) crafting an engaging first message to a girl on a dating app. Your style is conversational, playful, and a bit witty—like texting a friend you're interested in, not writing a formal intro. Always reference only specific details clearly provided in the image descriptions or bio, making it obvious you genuinely paid attention without sounding overly detailed or stalkerish. Never assume or invent details about images; only mention activities, locations, or context explicitly described in the provided image descriptions. In 'compliment' mode, offer a thoughtful, specific compliment based solely on the image details explicitly provided. Keep your language casual and authentic, exactly how a real Gen Z young adult texts someone they're interested in. Use current Gen Z slang naturally, but stay genuine. End each message with one relevant and engaging question to smoothly open a conversation. Absolutely no emojis, no guessing or assuming details, and nothing creepy.",
         "settings": {
             "sentence_count": sentence_count,
             "tone": tone,
             "creativity": creativity,
-            "model": "gpt-4o-mini-2024-07-18"
+            "model": "gpt-4.5-preview-2025-02-27"
         },
         "token_usage": {
             "prompt_tokens": prompt_tokens, 
@@ -308,7 +277,7 @@ async def generate_message_async(
     # Return complete result with all data
     return {
         "generated_message": generated_message,
-        "image_tags": filtered_tags,
+        "image_tags": all_captions,  # We're now returning captions instead of tags
         "token_usage": {
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,

@@ -11,7 +11,7 @@ Usage:
     uvicorn app:app --host 0.0.0.0 --port 8002
 
 Environment variables required:
-- GOOGLE_APPLICATION_CREDENTIALS: Path to Google Cloud service account JSON
+- CLARIFAI_PAT: Clarifai Personal Access Token for image captioning
 - OPENAI_API_KEY: Your OpenAI API key
 """
 
@@ -102,11 +102,9 @@ def verify_environment():
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
             detail="OPENAI_API_KEY not set in environment"
         )
-    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
-            detail="GOOGLE_APPLICATION_CREDENTIALS not set in environment"
-        )
+    # Clarifai PAT is optional as we use a default in the code
+    if not os.environ.get("CLARIFAI_PAT"):
+        print("Warning: CLARIFAI_PAT not set in environment, using default token")
     return True
 
 # Health check endpoint

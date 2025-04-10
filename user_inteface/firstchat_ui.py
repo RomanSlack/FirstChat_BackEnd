@@ -1211,9 +1211,13 @@ INDEX_HTML = """
                                     </div>
                                     
                                     <div>
-                                        <div class="section-title">Image Analysis</div>
-                                        <div class="interests-list">
-                                            ${data.image_tags.map(tag => `<div class="interest-tag">${tag}</div>`).join('')}
+                                        <div class="section-title">Image Descriptions</div>
+                                        <div style="margin-bottom: 15px;">
+                                            ${data.image_tags.map((caption, index) => `
+                                                <div style="background-color: var(--primary-lighter); color: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 8px;">
+                                                    <strong>Image ${index + 1}:</strong> ${caption}
+                                                </div>
+                                            `).join('')}
                                         </div>
                                         
                                         <div class="section-title" style="margin-top: 20px;">Settings Used</div>
@@ -1353,9 +1357,13 @@ INDEX_HTML = """
                                     </div>
                                     
                                     <div>
-                                        <div class="section-title">Image Analysis</div>
-                                        <div class="interests-list">
-                                            ${data.image_tags.map(tag => `<div class="interest-tag">${tag}</div>`).join('')}
+                                        <div class="section-title">Image Descriptions</div>
+                                        <div style="margin-bottom: 15px;">
+                                            ${data.image_tags.map((caption, index) => `
+                                                <div style="background-color: var(--primary-lighter); color: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 8px;">
+                                                    <strong>Image ${index + 1}:</strong> ${caption}
+                                                </div>
+                                            `).join('')}
                                         </div>
                                         
                                         <div class="section-title" style="margin-top: 20px;">Settings Used</div>
